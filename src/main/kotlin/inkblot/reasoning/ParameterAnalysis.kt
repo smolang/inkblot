@@ -12,9 +12,9 @@ object ParameterAnalysis {
     private val inverseFunctionalProperties = getFunctionalProperties(true)
 
     fun main() {
-        //val query = ParameterizedSparqlString("SELECT ?bike ?mfg WHERE { ?bike bk:hasFrame ?frame. ?bell bk:mfg ?mfg. ?mfg bk:mfg ?frame. ?bell bk:altMfg ?mfg }")
+        val query = ParameterizedSparqlString("SELECT ?bike ?mfg ?bell WHERE { ?comp bk:mfgDate ?mfg. ?frame bk:hasComponent ?comp. ?bike bk:hasFrame ?frame.  OPTIONAL { ?bike bk:hasFrame [bk:hasComponent [bk:hasBell ?bell]] } }")
         //val query = ParameterizedSparqlString("SELECT ?wheel ?dia ?mfgD ?mfgN WHERE { ?wheel a bk:wheel; bk:diameter ?dia. OPTIONAL { ?wheel bk:mfgDate ?mfgD } OPTIONAL {?wheel bk:mfgName ?mfgN } }")
-        val query = ParameterizedSparqlString("SELECT ?bike ?mfg ?fw ?bw ?bells WHERE { ?bike a bk:bike; bk:hasFrame [bk:frontWheel ?fw] OPTIONAL { ?bike bk:hasFrame [bk:backWheel ?bw] } OPTIONAL { ?bike bk:mfgDate ?mfg } OPTIONAL { ?bike bk:hasFrame [bk:hasBell ?bells] } }")
+        //val query = ParameterizedSparqlString("SELECT ?bike ?mfg ?fw ?bw ?bells WHERE { ?bike a bk:bike; bk:hasFrame [bk:frontWheel ?fw] OPTIONAL { ?bike bk:hasFrame [bk:backWheel ?bw] } OPTIONAL { ?bike bk:mfgDate ?mfg } OPTIONAL { ?bike bk:hasFrame [bk:hasBell ?bells] } }")
 
         query.setNsPrefix("bk", "http://rec0de.net/ns/bike#")
         deriveTypes(query.asQuery(), "bike")
@@ -27,7 +27,7 @@ object ParameterAnalysis {
         val vars = query.resultVars.toSet()
         val results = vars.associateWith { VariableProperties() }
 
-        println("Trying to derive types for these variables:")
+        println("Trying to derive info for these variables:")
         println(vars)
         println()
 
@@ -36,7 +36,7 @@ object ParameterAnalysis {
 
         println()
 
-        val dependencyPaths = SimplePaths.variableDependencyPaths(anchor, vars, visitor.variableDependencies)
+        val dependencyPaths = VariableDependencePaths.variableDependencyPaths(anchor, vars, visitor.variableDependencies)
         dependencyPaths.forEach { (k, v) ->
             if(v.isEmpty())
                 throw Exception("Unable to derive dependency path from ?$anchor to ?$k")
@@ -45,7 +45,7 @@ object ParameterAnalysis {
 
             v.forEach { path ->
                 println(path.joinToString("->"))
-                val (min, max) = pathMultiplicity(anchor, path)
+                val (min, max) = pathMultiplicity(path)
 
                 println("\tmultiplicity analysis: min $min max $max")
 
@@ -68,19 +68,59 @@ object ParameterAnalysis {
         // TODO: find 'anchor subgraph', ie nodes that have to be deleted with the object
         println()
         val anonymousVariables = visitor.variableDependencies.flatMap { listOf(it.s, it.o) }.toSet() - vars
-        println("Query contains anonymous variables: ${anonymousVariables.joinToString(", ")}")
+        val variableEquivalenceMap = anonymousVariables.associateWith { it }.toMutableMap()
         val anonDependencyPaths =
-            SimplePaths.variableDependencyPaths(anchor, anonymousVariables, visitor.variableDependencies)
-        // TODO: find out which anonymous variables are equivalent
-        anonDependencyPaths.forEach { (k, v) ->
-            if(v.isEmpty())
-                throw Exception("Unable to derive dependency path from ?$anchor to ?$k")
+            VariableDependencePaths.variableDependencyPaths(anchor, anonymousVariables, visitor.variableDependencies)
+        println("Query contains anonymous variables: ${anonymousVariables.joinToString(", ")}")
 
-            println("Dependency paths from $anchor to $k:")
+        // ok let's work this out: when are two variables equivalent to each other?
+        // -> if every path to the variable has an equivalent path leading to the other one, and vice versa
+        // -> corollary: the number of paths to each variable has to be identical
+        val coreAnonVars = anonymousVariables.toMutableList()
+        var prevSize = coreAnonVars.size + 1
+        var i: Int
+        println("Variable equivalence analysis starting with ${coreAnonVars.size} distinct variables")
 
-            v.forEach { path ->
+        while (coreAnonVars.size < prevSize) {
+            prevSize = coreAnonVars.size
+            i = 0
+            while(i < coreAnonVars.size) {
+                val variable = coreAnonVars[i]
+                println("Checking equivalences for $variable")
+                val referencePaths = anonDependencyPaths[variable]!!
+                val candidates = coreAnonVars.filter { it != variable && anonDependencyPaths[it]?.size == referencePaths.size }
+                val equivalent = candidates.filter {
+                    val paths = anonDependencyPaths[it]!!
+                    paths.all { p -> referencePaths.any { q -> VariableDependencePaths.pathsEquivalentUpToTargetVar(p, q, variableEquivalenceMap) } }
+                }.toSet()
+                equivalent.forEach {
+                    println("\tFound equivalence to $it")
+                    // update all variables currently pointing to the equivalent one to the canonical one
+                    variableEquivalenceMap.filter { (_, v) -> v == it }.forEach { (k, _) -> variableEquivalenceMap[k] = variable }
+                }
+                // equivalence is symmetric, so we will always remove things AFTER the current coreAnonVars index
+                // therefore it should be safe to remove during iteration?
+                coreAnonVars.removeAll(equivalent)
+                i += 1
+            }
+        }
+
+        println("Variable equivalence analysis found ${coreAnonVars.size} distinct variables")
+        println()
+
+        // TODO: rewrite paths using core variables or propagate multiplicity info to canonical paths
+        // actually no, the only possible difference that matters is if we are in an optional block
+
+        coreAnonVars.forEach { v ->
+            val paths = anonDependencyPaths[v]!!
+            if(paths.isEmpty())
+                throw Exception("Unable to derive dependency path from ?$anchor to ?$v")
+
+            println("Dependency paths from $anchor to $v:")
+
+            paths.forEach { path ->
                 println(path.joinToString("->"))
-                val (min, max) = pathMultiplicity(anchor, path)
+                val (min, max) = pathMultiplicity(path)
 
                 println("\tmultiplicity analysis: min $min max $max")
 
@@ -105,7 +145,7 @@ object ParameterAnalysis {
         val rangePredicatesSparql = rangeRelevantPredicates.joinToString(" "){ "<$it>" }
         val domainPredicatesSparql = domainRelevantPredicates.joinToString(" "){ "<$it>" }
 
-        // there might be a SPARQL injection here but they are probably all over the place anyway so ¯\_(ツ)_/¯
+        // there might be a SPARQL injection here, but they are probably all over the place anyway so ¯\_(ツ)_/¯
         // predicates are also kind of trusted input since they come from a valid query object - should be fine?
         val domainQuery = ParameterizedSparqlString("SELECT ?rel ?dom WHERE { VALUES ?rel { $domainPredicatesSparql } ?rel <http://www.w3.org/2000/01/rdf-schema#domain> ?dom }")
         val rangeQuery = ParameterizedSparqlString("SELECT ?rel ?range WHERE { VALUES ?rel { $rangePredicatesSparql } ?rel <http://www.w3.org/2000/01/rdf-schema#range> ?range }")
@@ -133,8 +173,7 @@ object ParameterAnalysis {
         }
     }
 
-    private fun pathMultiplicity(anchor: String, path: List<VarDependency>): Pair<Double, Double> {
-        var prevNode = anchor
+    private fun pathMultiplicity(path: List<VarDepEdge>): Pair<Double, Double> {
         var max = 1.0
         var min = 1.0
 
@@ -142,49 +181,21 @@ object ParameterAnalysis {
             val edge = path[i]
 
             // forward edge
-            if(edge.s == prevNode) {
-                max *= edge.max
-                min *= edge.min
-                prevNode = edge.o
+            if(!edge.backward) {
+                max *= edge.dependency.max
+                min *= edge.dependency.min
             }
             // backwards edges are not yet really supported
-            else if(edge.o == prevNode) {
-                if(edge.optional)
+            else {
+                if(edge.dependency.optional)
                     min = 0.0
-                if(!edge.inverseFunctional)
+                if(!edge.dependency.inverseFunctional)
                     max = Double.POSITIVE_INFINITY
-                prevNode = edge.s
             }
-            else
-                throw Exception("Disconnected path")
         }
 
         return Pair(min, max)
     }
-
-    /*private fun pathIsFunctional(anchor: String, path: List<VarDependency>): Boolean {
-        var prevNode = anchor
-        for (i in (path.indices)) {
-            val edge = path[i]
-
-            // forward edge
-            if(edge.s == prevNode) {
-                if(!edge.functional)
-                    return false
-                prevNode = edge.o
-            }
-            // backward edge
-            else if(edge.o == prevNode) {
-                if(!edge.inverseFunctional)
-                    return false
-                prevNode = edge.s
-            }
-            else
-                throw Exception("Disconnected path")
-        }
-
-        return true
-    }*/
 
     private fun getFunctionalProperties(inverse: Boolean = false): Set<String> {
         val queryStr = if(inverse)
@@ -209,111 +220,5 @@ object ParameterAnalysis {
 }
 
 data class VariableProperties(var nullable: Boolean = true, var functional: Boolean = false, var datatype: String? = null)
-data class VarDependency(
-    val s: String,
-    val p: String,
-    val o: String,
-    val optional: Boolean,
-    val functional: Boolean,
-    val inverseFunctional: Boolean,
-    val min: Double,
-    val max: Double = Double.POSITIVE_INFINITY
-) {
-    override fun toString(): String {
-        return if(functional) "($s-$p->$o)f" else "($s-$p->$o)"
-    }
-}
-
-object SimplePaths {
-
-    private val visited = mutableSetOf<String>()
-    private val currentPath = mutableListOf<String>()
-    private val simplePaths = mutableListOf<List<String>>()
-    private val adjacency = mutableMapOf<String,MutableSet<String>>()
-
-    fun variableDependencyPaths(anchor: String, vars: Set<String>, dependencies: Set<VarDependency>): Map<String, List<List<VarDependency>>> {
-        initAdjacencyMatrix(dependencies)
-        val edgesBySourceNode = dependencies.groupBy { it.s }
-        val vertexPaths = vars.filterNot { it == anchor }.associateWith { simplePaths(anchor, it) }
-
-        val edgePaths = vertexPaths.mapValues { (_, paths) ->
-            paths.flatMap { nodePathToEdgePaths(it, edgesBySourceNode) }
-        }
-
-        return edgePaths
-    }
-
-    // There may be two different edges leading from ?a to ?b
-    // these are different paths for our purposes since they can convey different cardinality information
-    // Since the simple path algorithm considers all edges equivalent, we have to do some post-processing
-    // to 'multiplex' the choices of edges into different paths.
-    // This is inherently exponential, but we trust it doesn't happen too much
-    private fun nodePathToEdgePaths(nodePath: List<String>, edgesByStartNode: Map<String,List<VarDependency>>): List<List<VarDependency>> {
-        var paths = mutableListOf<MutableList<VarDependency>>(mutableListOf())
-        for(i in (1 until nodePath.size)) {
-            val currentNode = nodePath[i-1]
-            val nextNode = nodePath[i]
-            val forwardEdges = edgesByStartNode[currentNode]?.filter { it.o == nextNode } ?: emptyList()
-            val backwardEdges = edgesByStartNode[nextNode]?.filter { it.o == currentNode } ?: emptyList()
-            val availableEdges = forwardEdges + backwardEdges
-
-            // only one available edge, just add it to all the paths we are currently tracking
-            if(availableEdges.size == 1)
-                paths.forEach { it.add(availableEdges.first()) }
-            // 'fork in the road', for every available edge, create a copy of all paths we are tracking
-            else {
-                val multiplexed = availableEdges.flatMap { edge ->
-                    paths.map { (it + edge).toMutableList() }
-                }
-                paths = multiplexed.toMutableList()
-            }
-        }
-
-        return paths
-    }
-
-    private fun initAdjacencyMatrix(dependencies: Set<VarDependency>) {
-        adjacency.clear()
-        dependencies.forEach {
-            if(adjacency.containsKey(it.s))
-                adjacency[it.s]!!.add(it.o)
-            else
-                adjacency[it.s] = mutableSetOf(it.o)
-
-            // we also allow backwards edges in our paths
-            if(adjacency.containsKey(it.o))
-                adjacency[it.o]!!.add(it.s)
-            else
-                adjacency[it.o] = mutableSetOf(it.s)
-        }
-    }
-
-    // Common algorithm to compute all simple paths between two vertices
-    // (simple = each vertex occurs only once on the path)
-    // see https://www.baeldung.com/cs/simple-paths-between-two-vertices
-    private fun simplePaths(anchor: String, target: String): List<List<String>> {
-        visited.clear()
-        currentPath.clear()
-        simplePaths.clear()
-
-        dfs(anchor, target)
-        return simplePaths.toList()
-    }
 
 
-    private fun dfs(from: String, to: String) {
-        if(visited.contains(from))
-            return
-
-        if(from == to) {
-            simplePaths.add(currentPath + from)
-        }
-        else {
-            visited.add(from)
-            currentPath.add(from)
-            adjacency[from]?.forEach { dfs(it, to) }
-            currentPath.removeLast()
-            visited.remove(from)
-        }
-    }
-}

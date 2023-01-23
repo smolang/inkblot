@@ -23,7 +23,7 @@ abstract class SemanticObject(val uri: String) {
     }
 
     // Delete functionality
-    fun delete() {
+    open fun delete() {
         markDirty()
         deleted = true
         Inkblot.changelog.add(DeleteObject(uri))

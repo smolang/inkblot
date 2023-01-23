@@ -1,5 +1,7 @@
 import bikes.AppSpaceBike
 import bikes.Bike
+import bikes.Wheel
+import inkblot.Inkblot
 import inkblot.reasoning.ParameterAnalysis
 
 fun main(args: Array<String>) {
@@ -23,19 +25,20 @@ fun main(args: Array<String>) {
     }
 
     //val newBike = AppSpaceBike(Bike.create(2007, Wheel.loadAll().first(),null, emptyList()))
-    //Bike.loadFromURI("http://rec0de.net/ns/bike#bike4xufe2a-2vrkm33d").delete()
-    //RuntimeSupport.commit()
+    Bike.loadFromURI("http://rec0de.net/ns/bike#bike-4yi7b5a-e2dosvpz").delete()
+    Inkblot.commit()
 
     println("Unicycles:")
     val unicycles = Bike.loadSelected("!bound(?bw)")
     unicycles.forEach {
         println(it.uri)
     }
+    println()
 
     val bikeA = AppSpaceBike(Bike.loadFromURI("http://rec0de.net/ns/bike#mountainbike"))
     val bikeB = AppSpaceBike(Bike.loadFromURI("http://rec0de.net/ns/bike#bike3"))
     //bikeB.removeAllBells()
-    //RuntimeSupport.commit()
+    //Inkblot.commit()
 
     bikeA.ride("the supermarket", false)
     println()

@@ -108,8 +108,9 @@ object ParameterAnalysis {
         println("Variable equivalence analysis found ${coreAnonVars.size} distinct variables")
         println()
 
-        // TODO: rewrite paths using core variables or propagate multiplicity info to canonical paths
-        // actually no, the only possible difference that matters is if we are in an optional block
+        // at this point, multiplicity of the canonical anonymous variables might be overly pessimistic
+        // since we throw ways info found on redundant paths
+        // but as we only use these to properly delete objects, I think we're fine
 
         coreAnonVars.forEach { v ->
             val paths = anonDependencyPaths[v]!!

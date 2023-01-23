@@ -16,12 +16,11 @@ class Bike(uri: String, mfgDate: Int?, frontWheel: String, backWheel: String?, b
 
         fun create(mfgDate: Int?, frontWheel: Wheel, backWheel: Wheel?, bells: List<Bell>): Bike {
             val uri = prefix + "bike" + Inkblot.freshSuffixFor("bike")
-            val frameUri = prefix + "frame" + Inkblot.freshSuffixFor("frame")
+
 
             val template = ParameterizedSparqlString("INSERT DATA { ?bike a bk:bike; bk:hasFrame [bk:frontWheel ?fw] }")
             template.setNsPrefix("bk", prefix)
             template.setIri("bike", uri)
-            //template.setIri("frame", frameUri)
             template.setIri("fw", frontWheel.uri)
             val update = template.asUpdate()
 
@@ -34,17 +33,17 @@ class Bike(uri: String, mfgDate: Int?, frontWheel: String, backWheel: String?, b
             }
 
             if(backWheel != null) {
-                val mfgUpdate = ParameterizedSparqlString("INSERT DATA { ?frame bk:backWheel ?bw }")
+                val mfgUpdate = ParameterizedSparqlString("INSERT DATA { ?bike bk:hasFrame [bk:backWheel ?bw] }")
                 mfgUpdate.setNsPrefix("bk", prefix)
-                mfgUpdate.setIri("frame", frameUri)
+                mfgUpdate.setIri("bike", uri)
                 mfgUpdate.setIri("bw", backWheel.uri)
                 update.add(mfgUpdate.asUpdate().first())
             }
 
             bells.forEach {
-                val bellUpdate = ParameterizedSparqlString("INSERT DATA { ?frame bk:hasBell ?bell }")
+                val bellUpdate = ParameterizedSparqlString("INSERT DATA { ?bike bk:hasFrame [bk:hasBell ?bell] }")
                 bellUpdate.setNsPrefix("bk", prefix)
-                bellUpdate.setIri("frame", frameUri)
+                bellUpdate.setIri("bike", uri)
                 bellUpdate.setIri("bell", it.uri)
                 update.add(bellUpdate.asUpdate().first())
             }
@@ -212,5 +211,16 @@ class Bike(uri: String, mfgDate: Int?, frontWheel: String, backWheel: String?, b
 
         other.delete(uri)
         markDirty()
+    }
+
+    override fun delete() {
+        markDirty()
+        deleted = true
+
+        val template = ParameterizedSparqlString("DELETE { ?f ?p ?o} WHERE { ?bike bk:hasFrame ?f. ?f ?p ?o }; DELETE { ?s ?p ?f } WHERE { ?bike bk:hasFrame ?f. ?s ?p ?f }; DELETE WHERE { ?s ?p ?bike }; DELETE WHERE { ?bike ?p ?o }")
+        template.setNsPrefix("bk", prefix)
+        template.setIri("bike", uri)
+
+        Inkblot.changelog.add(ComplexDelete(template.asUpdate()))
     }
 }

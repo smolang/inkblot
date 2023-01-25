@@ -1,4 +1,8 @@
-package inkblot
+package inkblot.runtime
+
+import inkblot.runtime.DeleteObject
+import inkblot.runtime.Inkblot
+import inkblot.runtime.RedirectDelete
 
 abstract class SemanticObject(val uri: String) {
     protected var deleted = false

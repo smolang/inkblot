@@ -1,6 +1,6 @@
 package inkblot.reasoning
 
-import inkblot.Inkblot
+import inkblot.runtime.Inkblot
 import org.apache.jena.query.ParameterizedSparqlString
 import org.apache.jena.query.Query
 import org.apache.jena.query.QuerySolution
@@ -12,9 +12,9 @@ object ParameterAnalysis {
     private val inverseFunctionalProperties = getFunctionalProperties(true)
 
     fun main() {
-        val query = ParameterizedSparqlString("SELECT ?bike ?mfg ?bell WHERE { ?comp bk:mfgDate ?mfg. ?frame bk:hasComponent ?comp. ?bike bk:hasFrame ?frame.  OPTIONAL { ?bike bk:hasFrame [bk:hasComponent [bk:hasBell ?bell]] } }")
+        //val query = ParameterizedSparqlString("SELECT ?bike ?mfg ?bell WHERE { ?comp bk:mfgDate ?mfg. ?frame bk:hasComponent ?comp. ?bike bk:hasFrame ?frame.  OPTIONAL { ?bike bk:hasFrame [bk:hasComponent [bk:hasBell ?bell]] } }")
         //val query = ParameterizedSparqlString("SELECT ?wheel ?dia ?mfgD ?mfgN WHERE { ?wheel a bk:wheel; bk:diameter ?dia. OPTIONAL { ?wheel bk:mfgDate ?mfgD } OPTIONAL {?wheel bk:mfgName ?mfgN } }")
-        //val query = ParameterizedSparqlString("SELECT ?bike ?mfg ?fw ?bw ?bells WHERE { ?bike a bk:bike; bk:hasFrame [bk:frontWheel ?fw] OPTIONAL { ?bike bk:hasFrame [bk:backWheel ?bw] } OPTIONAL { ?bike bk:mfgDate ?mfg } OPTIONAL { ?bike bk:hasFrame [bk:hasBell ?bells] } }")
+        val query = ParameterizedSparqlString("SELECT ?bike ?mfg ?fw ?bw ?bells WHERE { ?bike a bk:bike; bk:hasFrame [bk:frontWheel ?fw] OPTIONAL { ?bike bk:hasFrame [bk:backWheel ?bw] } OPTIONAL { ?bike bk:mfgDate ?mfg } OPTIONAL { ?bike bk:hasFrame [bk:hasBell ?bells] } }")
 
         query.setNsPrefix("bk", "http://rec0de.net/ns/bike#")
         deriveTypes(query.asQuery(), "bike")

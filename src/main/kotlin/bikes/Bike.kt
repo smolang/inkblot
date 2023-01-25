@@ -1,112 +1,79 @@
 package bikes
 
-import inkblot.*
+import inkblot.runtime.*
 import org.apache.jena.query.ParameterizedSparqlString
 import org.apache.jena.query.QuerySolution
-import org.apache.jena.query.ResultSet
 import org.apache.jena.rdf.model.ResourceFactory
-import org.apache.jena.sparql.exec.http.QueryExecutionHTTP
-import org.apache.jena.sparql.exec.http.QueryExecutionHTTPBuilder
+
+object BikeFactory : SemanticObjectFactory<Bike>() {
+    private const val prefix = "http://rec0de.net/ns/bike#"
+    override val query = "PREFIX bk: <${prefix}> SELECT ?bike ?mfg ?fw ?bw ?bells WHERE { ?bike a bk:bike; bk:hasFrame [bk:frontWheel ?fw] OPTIONAL { ?bike bk:hasFrame [bk:backWheel ?bw] } OPTIONAL { ?bike bk:mfgDate ?mfg } OPTIONAL { ?bike bk:hasFrame [bk:hasBell ?bells] } }"
+    override val anchor = "bike"
+
+    fun create(mfgDate: Int?, frontWheel: Wheel, backWheel: Wheel?, bells: List<Bell>): Bike {
+        val uri = prefix + "bike" + Inkblot.freshSuffixFor("bike")
 
 
-class Bike(uri: String, mfgDate: Int?, frontWheel: String, backWheel: String?, bells: List<String>) : SemanticObject(uri) {
+        val template = ParameterizedSparqlString("INSERT DATA { ?bike a bk:bike; bk:hasFrame [bk:frontWheel ?fw] }")
+        template.setNsPrefix("bk", prefix)
+        template.setIri("bike", uri)
+        template.setIri("fw", frontWheel.uri)
+        val update = template.asUpdate()
+
+        if(mfgDate != null) {
+            val mfgUpdate = ParameterizedSparqlString("INSERT DATA { ?bike bk:mfgDate ?mfg }")
+            mfgUpdate.setNsPrefix("bk", prefix)
+            mfgUpdate.setIri("bike", uri)
+            mfgUpdate.setParam("mfg", ResourceFactory.createTypedLiteral(mfgDate))
+            update.add(mfgUpdate.asUpdate().first())
+        }
+
+        if(backWheel != null) {
+            val mfgUpdate = ParameterizedSparqlString("INSERT DATA { ?bike bk:hasFrame [bk:backWheel ?bw] }")
+            mfgUpdate.setNsPrefix("bk", prefix)
+            mfgUpdate.setIri("bike", uri)
+            mfgUpdate.setIri("bw", backWheel.uri)
+            update.add(mfgUpdate.asUpdate().first())
+        }
+
+        bells.forEach {
+            val bellUpdate = ParameterizedSparqlString("INSERT DATA { ?bike bk:hasFrame [bk:hasBell ?bell] }")
+            bellUpdate.setNsPrefix("bk", prefix)
+            bellUpdate.setIri("bike", uri)
+            bellUpdate.setIri("bell", it.uri)
+            update.add(bellUpdate.asUpdate().first())
+        }
+
+        Inkblot.changelog.add(CreateNode(update))
+
+        return Bike(uri, mfgDate, frontWheel.uri, backWheel?.uri, bells.map { it.uri })
+    }
+
+    override fun instantiateSingleResult(lines: List<QuerySolution>): Bike? {
+        if(lines.isEmpty())
+            return null
+
+        // for single cardinality properties we can read the first only, as all others have to be the same
+        val uri = lines.first().getResource("bike").uri
+        val mfgD = lines.first().getLiteral("mfg")?.int
+
+        val fw = lines.first().getResource("fw").uri
+        val bw = lines.first().getResource("bw")?.uri
+
+        // for higher cardinality properties, we have to collect all distinct ones
+        val bells = lines.mapNotNull { it.getResource("bells")?.uri }.distinct()
+
+        return Bike(uri, mfgD, fw, bw, bells)
+    }
+}
+
+class Bike internal constructor(uri: String, mfgDate: Int?, frontWheel: String, backWheel: String?, bells: List<String>) : SemanticObject(uri) {
     companion object {
         private const val prefix = "http://rec0de.net/ns/bike#"
-        private const val query = "PREFIX bk: <$prefix> SELECT ?bike ?mfg ?fw ?bw ?bells WHERE { ?bike a bk:bike; bk:hasFrame [bk:frontWheel ?fw] OPTIONAL { ?bike bk:hasFrame [bk:backWheel ?bw] } OPTIONAL { ?bike bk:mfgDate ?mfg } OPTIONAL { ?bike bk:hasFrame [bk:hasBell ?bells] } }"
-
-        fun create(mfgDate: Int?, frontWheel: Wheel, backWheel: Wheel?, bells: List<Bell>): Bike {
-            val uri = prefix + "bike" + Inkblot.freshSuffixFor("bike")
-
-
-            val template = ParameterizedSparqlString("INSERT DATA { ?bike a bk:bike; bk:hasFrame [bk:frontWheel ?fw] }")
-            template.setNsPrefix("bk", prefix)
-            template.setIri("bike", uri)
-            template.setIri("fw", frontWheel.uri)
-            val update = template.asUpdate()
-
-            if(mfgDate != null) {
-                val mfgUpdate = ParameterizedSparqlString("INSERT DATA { ?bike bk:mfgDate ?mfg }")
-                mfgUpdate.setNsPrefix("bk", prefix)
-                mfgUpdate.setIri("bike", uri)
-                mfgUpdate.setParam("mfg", ResourceFactory.createTypedLiteral(mfgDate))
-                update.add(mfgUpdate.asUpdate().first())
-            }
-
-            if(backWheel != null) {
-                val mfgUpdate = ParameterizedSparqlString("INSERT DATA { ?bike bk:hasFrame [bk:backWheel ?bw] }")
-                mfgUpdate.setNsPrefix("bk", prefix)
-                mfgUpdate.setIri("bike", uri)
-                mfgUpdate.setIri("bw", backWheel.uri)
-                update.add(mfgUpdate.asUpdate().first())
-            }
-
-            bells.forEach {
-                val bellUpdate = ParameterizedSparqlString("INSERT DATA { ?bike bk:hasFrame [bk:hasBell ?bell] }")
-                bellUpdate.setNsPrefix("bk", prefix)
-                bellUpdate.setIri("bike", uri)
-                bellUpdate.setIri("bell", it.uri)
-                update.add(bellUpdate.asUpdate().first())
-            }
-
-            Inkblot.changelog.add(CreateNode(update))
-
-            return Bike(uri, mfgDate, frontWheel.uri, backWheel?.uri, bells.map { it.uri })
-        }
-
-        fun loadFromURI(uri: String): Bike {
-
-            if(Inkblot.loadedObjects.containsKey(uri))
-                return Inkblot.loadedObjects[uri] as Bike
-
-            val builder = QueryExecutionHTTPBuilder.create()
-            builder.endpoint(Inkblot.endpoint)
-            builder.query(query)
-            builder.substitution("bike", ResourceFactory.createResource(uri).asNode())
-            val res = builder.select()
-
-            val list = res.asSequence().toList()
-            res.close()
-
-            if(list.isEmpty())
-                throw Exception("Loading bike by URI <$uri> failed, no such bike")
-
-            return instantiateSingleResult(list)!!
-        }
-
-        fun loadAll(): List<Bike> {
-            val query = QueryExecutionHTTP.service(Inkblot.endpoint, query)
-            return instantiateFromResultSet(query.execSelect())
-        }
-
-        fun loadSelected(filterStr: String): List<Bike> {
-            val selectQuery = ParameterizedSparqlString(query).asQuery()
-            val filtered = Inkblot.addFilterToSelect(selectQuery, filterStr)
-            val execCtx = QueryExecutionHTTP.service(Inkblot.endpoint, filtered)
-            return instantiateFromResultSet(execCtx.execSelect())
-        }
-
-        private fun instantiateFromResultSet(res: ResultSet): List<Bike> {
-            val entities = res.asSequence().groupBy { it.getResource("bike").uri }
-            res.close()
-            return entities.values.map { instantiateSingleResult(it)!! } // entity groups are never empty here, non-null assert is fine
-        }
-
-        private fun instantiateSingleResult(lines: List<QuerySolution>): Bike? {
-            if(lines.isEmpty())
-                return null
-
-            // for single cardinality properties we can read the first only, as all others have to be the same
-            val uri = lines.first().getResource("bike").uri
-            val mfgD = lines.first().getLiteral("mfg")?.int
-
-            val fw = lines.first().getResource("fw").uri
-            val bw = lines.first().getResource("bw")?.uri
-
-            // for higher cardinality properties, we have to collect all distinct ones
-            val bells = lines.mapNotNull { it.getResource("bells")?.uri }.distinct()
-
-            return Bike(uri, mfgD, fw, bw, bells)
-        }
+        fun create(mfgDate: Int?, frontWheel: Wheel, backWheel: Wheel?, bells: List<Bell>) = BikeFactory.create(mfgDate, frontWheel, backWheel, bells)
+        fun loadFromURI(uri: String) = BikeFactory.loadFromURI(uri)
+        fun loadAll() = BikeFactory.loadAll()
+        fun loadSelected(filterStr: String) = BikeFactory.loadSelected(filterStr)
     }
 
     // Single cardinality properties can make do with just a field

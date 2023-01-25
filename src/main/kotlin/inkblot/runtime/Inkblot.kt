@@ -1,14 +1,8 @@
-package inkblot
+package inkblot.runtime
 
-import bikes.Bike
 import org.apache.jena.graph.Node
 import org.apache.jena.query.ParameterizedSparqlString
-import org.apache.jena.query.Query
-import org.apache.jena.query.QueryFactory
 import org.apache.jena.sparql.exec.http.UpdateExecHTTPBuilder
-import org.apache.jena.sparql.syntax.ElementFilter
-import org.apache.jena.sparql.syntax.ElementGroup
-import org.apache.jena.sparql.util.ExprUtils
 import org.apache.jena.update.UpdateRequest
 import java.util.WeakHashMap
 
@@ -18,6 +12,11 @@ object Inkblot {
     val loadedObjects = WeakHashMap<String, SemanticObject>()
     val dirtySet = mutableSetOf<SemanticObject>() // we keep modified objects here in addition to the weak hashmap to ensure they aren't unloaded
     val changelog = mutableListOf<ChangeNode>()
+
+    init {
+        // we have to explicitly initialize ARQ for some reason if running from the .jar
+        org.apache.jena.query.ARQ.init()
+    }
 
     fun commit() {
         if(changelog.isEmpty())
@@ -39,23 +38,6 @@ object Inkblot {
     }
 
     fun freshSuffixFor(context: String) = idgen.freshSuffixFor(context)
-
-    fun addFilterToSelect(originalQuery: Query, filterString: String): Query {
-        val select = originalQuery.queryPattern
-        val filterExpr = ExprUtils.parse(filterString)
-        val filter = ElementFilter(filterExpr)
-
-        val body = ElementGroup()
-        body.addElement(select)
-        body.addElement(filter)
-
-        val q = QueryFactory.make()
-        q.queryPattern = body
-        q.setQuerySelectType()
-        originalQuery.resultVars.forEach { q.addResultVar(it) }
-
-        return q
-    }
 }
 
 interface ChangeNode {

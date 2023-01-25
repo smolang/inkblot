@@ -17,6 +17,8 @@ dependencies {
     testImplementation(kotlin("test"))
     implementation("org.apache.jena:jena-core:4.4.0")
     implementation("org.apache.jena:apache-jena-libs:4.4.0")
+    implementation("com.github.ajalt.clikt:clikt:3.5.0")
+    implementation("org.slf4j:slf4j-nop:2.0.6")
 }
 
 tasks.test {

@@ -8,6 +8,8 @@ import java.util.WeakHashMap
 
 object Inkblot {
     private val idgen: FreshUriGenerator = TinyUIDGen
+    val types = TypeHelper
+
     const val endpoint = "http://localhost:3030/bikes"
     val loadedObjects = WeakHashMap<String, SemanticObject>()
     val dirtySet = mutableSetOf<SemanticObject>() // we keep modified objects here in addition to the weak hashmap to ensure they aren't unloaded
@@ -98,6 +100,24 @@ class CommonPropertyRemove(
     propertyUri: String,
     deleteValue: Node
 ) : CommonSPOChange("DELETE DATA { ?s ?p ?o }", objectUri, propertyUri, deleteValue)
+
+class CommonPropertyChange(private val objectUri: String, private val propertyUri: String, private val oldValue: Node, private val newValue: Node) : CommonChangeNode() {
+    override fun commitChange(endpoint: String) {
+        val builder = UpdateExecHTTPBuilder.create()
+        builder.endpoint(endpoint)
+        builder.update(asUpdate())
+        builder.execute()
+    }
+
+    override fun asUpdate(): UpdateRequest {
+        val template = ParameterizedSparqlString("DELETE { ?s ?p ?o } WHERE { ?s ?p ?o }; INSERT DATA { ?s ?p ?n }")
+        template.setIri("s", objectUri)
+        template.setIri("p", propertyUri)
+        template.setParam("o", oldValue)
+        template.setParam("n", newValue)
+        return template.asUpdate()
+    }
+}
 
 class UnsetSingletProperty(private val objectUri: String, private val propertyUri: String) : CommonChangeNode() {
     override fun commitChange(endpoint: String) {

@@ -4,7 +4,9 @@ import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.core.subcommands
 import com.github.ajalt.clikt.parameters.arguments.argument
 import com.github.ajalt.clikt.parameters.options.option
+import inkblot.codegen.SemanticObjectGenerator
 import inkblot.reasoning.ParameterAnalysis
+import inkblot.reasoning.VariableProperties
 import org.apache.jena.query.ParameterizedSparqlString
 
 class Inkblt : CliktCommand() {
@@ -24,6 +26,31 @@ class Analyze: CliktCommand(help="Analyze a SPARQL query") {
         val anchorOrDefault = if(anchor == null) queryObj.resultVars.first() else anchor!!
 
         ParameterAnalysis.deriveTypes(q.asQuery(), anchorOrDefault)
+    }
+}
+
+class Generate: CliktCommand(help="Generate semantic object for statement") {
+    private val query: String by argument(help="SPARQL select query for object")
+    private val anchor by option(help="anchor variable of query")
+
+    override fun run() {
+        org.apache.jena.query.ARQ.init()
+
+        val q = ParameterizedSparqlString(query)
+        q.setNsPrefix("bk", "http://rec0de.net/ns/bike#")
+        val queryObj = q.asQuery()
+        val anchorOrDefault = if(anchor == null) queryObj.resultVars.first() else anchor!!
+
+        val variableInfo = mutableMapOf(
+            "mfg" to VariableProperties(true, true, "Int", "<http://rec0de.net/ns/bike#mfgDate>"),
+            "fw" to VariableProperties(false, true, "Wheel", null, true),
+            "bw" to VariableProperties(true, true, "Wheel", null, true),
+            "bells" to VariableProperties(true, false, "Bell", null, true)
+        )
+
+        val generator = SemanticObjectGenerator(queryObj, anchorOrDefault, "http://rec0de.net/ns/bike#", variableInfo)
+
+        print(generator.gen())
     }
 }
 
@@ -48,7 +75,9 @@ class Playground: CliktCommand(help="Execute playground environment") {
             println()
         }
 
-        //val newBike = AppSpaceBike(Bike.create(2007, Wheel.loadAll().first(),null, emptyList()))
+        //val newBike = Bike.create(2007, Wheel.loadAll().first(),null, emptyList())
+
+        //newBike.bells_remove()
         //Bike.loadFromURI("http://rec0de.net/ns/bike#bike-4yi7b5a-e2dosvpz").delete()
         //Inkblot.commit()
 
@@ -72,4 +101,4 @@ class Playground: CliktCommand(help="Execute playground environment") {
     }
 }
 
-fun main(args: Array<String>) = Inkblt().subcommands(Analyze(), Playground()).main(args)
+fun main(args: Array<String>) = Inkblt().subcommands(Analyze(), Playground(), Generate()).main(args)

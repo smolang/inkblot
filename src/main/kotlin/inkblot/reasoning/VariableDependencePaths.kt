@@ -114,15 +114,9 @@ data class VarDependency(
     val s: String,
     val p: String,
     val o: String,
-    val optional: Boolean,
-    val functional: Boolean,
-    val inverseFunctional: Boolean,
-    val min: Double,
-    val max: Double
+    val optional: Boolean
 ) {
-    override fun toString(): String {
-        return if(functional) "($s-$p->$o)f" else "($s-$p->$o)"
-    }
+    override fun toString() = "($s-$p->$o)"
 
     fun equivalent(other: VarDependency, equivMap: Map<String,String>): Boolean {
         return p == other.p && equivMap[s] == equivMap[other.s] && equivMap[o] == equivMap[other.o]

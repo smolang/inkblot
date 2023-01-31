@@ -11,21 +11,14 @@ object ParameterAnalysis {
     private val functionalProperties = getFunctionalProperties()
     private val inverseFunctionalProperties = getFunctionalProperties(true)
 
-    fun main() {
-        //val query = ParameterizedSparqlString("SELECT ?bike ?mfg ?bell WHERE { ?comp bk:mfgDate ?mfg. ?frame bk:hasComponent ?comp. ?bike bk:hasFrame ?frame.  OPTIONAL { ?bike bk:hasFrame [bk:hasComponent [bk:hasBell ?bell]] } }")
-        //val query = ParameterizedSparqlString("SELECT ?wheel ?dia ?mfgD ?mfgN WHERE { ?wheel a bk:wheel; bk:diameter ?dia. OPTIONAL { ?wheel bk:mfgDate ?mfgD } OPTIONAL {?wheel bk:mfgName ?mfgN } }")
-        val query = ParameterizedSparqlString("SELECT ?bike ?mfg ?fw ?bw ?bells WHERE { ?bike a bk:bike; bk:hasFrame [bk:frontWheel ?fw] OPTIONAL { ?bike bk:hasFrame [bk:backWheel ?bw] } OPTIONAL { ?bike bk:mfgDate ?mfg } OPTIONAL { ?bike bk:hasFrame [bk:hasBell ?bells] } }")
-
-        query.setNsPrefix("bk", "http://rec0de.net/ns/bike#")
-        deriveTypes(query.asQuery(), "bike")
-    }
-    fun deriveTypes(query: Query, anchor: String) {
+    fun deriveTypes(query: Query, anchor: String): Map<String,VariableProperties> {
         if(!query.isSelectType)
             throw Exception("Query should be a SELECT")
         query.resetResultVars()
 
         val vars = query.resultVars.toSet()
         val results = vars.associateWith { VariableProperties() }
+        results[anchor]!!.nullable = false
 
         println("Trying to derive info for these variables:")
         println(vars)
@@ -62,6 +55,10 @@ object ParameterAnalysis {
                     results[k]!!.functional = true
                 }
             }
+
+            // We have a simple property access if there is exactly one path and that path is of length one (anchor in direct relation to property, in forward direction)
+            if(v.size == 1 && v.first().size == 1 && !v.first().first().backward)
+                results[k]!!.isSimplePropertyViaURI = v.first().first().dependency.p
 
         }
 
@@ -141,6 +138,25 @@ object ParameterAnalysis {
 
         println()
 
+        // before doing anything else, we'll check that no variable occurs in different optional contexts allowing potentially conflicting bindings
+        val optCtxStacks = visitor.variablesInOptionalContexts.groupBy { it.first }.mapValues { (_, v) -> v.map { it.second } }
+        vars.filter { results[it]!!.nullable }.forEach {v ->
+            val stacks = optCtxStacks[v]!!.distinct().sortedBy { it.length }.toMutableList() // non-null assertion is safe since nullable vars occur in at least one context
+            val distinctBindings = mutableListOf<String>()
+
+            while(stacks.size > 0) {
+                // first item in the list must be a distinct binding since it is the shortest stack by length and thus cannot have another item as a prefix
+                val top = stacks.removeFirst()
+                // if we have a binding near the top of the stack, all bindings in sub-contexts are safe (i think. i don't actually know how SPARQL works here exactly)
+                stacks.removeAll { it.startsWith(top) }
+                distinctBindings.add(top)
+            }
+
+            //println("Variable $v has distinct optional bindings ${distinctBindings.joinToString("; ")}")
+            if(distinctBindings.size > 1)
+                throw Exception("Optional variable ?$v has potentially conflicting bindings in different optional contexts")
+        }
+
         val rangeRelevantPredicates = visitor.variableInRangesOf.values.flatten().toSet()
         val domainRelevantPredicates = visitor.variableInDomainsOf.values.flatten().toSet()
         val rangePredicatesSparql = rangeRelevantPredicates.joinToString(" "){ "<$it>" }
@@ -172,6 +188,8 @@ object ParameterAnalysis {
             }
             println()
         }
+
+        return results
     }
 
     private fun pathMultiplicity(path: List<VarDepEdge>): Pair<Double, Double> {
@@ -183,15 +201,15 @@ object ParameterAnalysis {
 
             // forward edge
             if(!edge.backward) {
-                max *= edge.dependency.max
-                min *= edge.dependency.min
+                max *= 1//edge.dependency.max
+                min *= 1//edge.dependency.min
             }
             // backwards edges are not yet really supported
             else {
                 if(edge.dependency.optional)
                     min = 0.0
-                if(!edge.dependency.inverseFunctional)
-                    max = Double.POSITIVE_INFINITY
+                /*if(!edge.dependency.inverseFunctional)
+                    max = Double.POSITIVE_INFINITY*/
             }
         }
 
@@ -220,6 +238,12 @@ object ParameterAnalysis {
     }
 }
 
-data class VariableProperties(var nullable: Boolean = true, var functional: Boolean = false, var datatype: String? = null)
+data class VariableProperties(
+    var nullable: Boolean = true,
+    var functional: Boolean = false,
+    var datatype: String? = "Unk",
+    var isSimplePropertyViaURI: String? = null,
+    var isObjectReference: Boolean = false
+)
 
 

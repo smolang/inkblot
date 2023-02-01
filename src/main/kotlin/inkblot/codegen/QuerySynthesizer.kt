@@ -26,9 +26,8 @@ class QuerySynthesizer(query: Query, val anchor: String, private val variableInf
         }.joinToString(" ")
 
         val concreteInitializers = concreteLeaves.map {c ->
-            println(c)
             paths.pathsToConcrete(c).joinToString(" ") { pathToSparqlSelect(it, null) }
-        }
+        }.joinToString(" ")
 
         return "INSERT DATA { $variableInitializers $concreteInitializers }"
 
@@ -69,7 +68,7 @@ class QuerySynthesizer(query: Query, val anchor: String, private val variableInf
             val lastEdgeUri = path.last().dependency.p
             val lastNodeVar = freshVar()
             verbSentences.add("$lastNodeVar <$lastEdgeUri> ?o.")
-            whereSentences.add(pathToSparqlSelect(path, lastNodeVar))
+            whereSentences.add(pathToSparqlSelect(path.dropLast(1), lastNodeVar))
         }
 
         val verbSection = "$verb { ${verbSentences.joinToString(" ")} } "

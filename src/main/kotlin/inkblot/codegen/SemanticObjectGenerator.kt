@@ -444,5 +444,5 @@ class SemanticObjectGenerator(private val className: String, private val query: 
         """.trimIndent()
     }
 
-    private fun pkg() = "package gen\n"
+    private fun pkg() = "package bikes\n"
 }

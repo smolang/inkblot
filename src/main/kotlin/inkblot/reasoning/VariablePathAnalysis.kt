@@ -2,7 +2,7 @@ package inkblot.reasoning
 
 import org.apache.jena.query.Query
 
-class VariablePathAnalysis(private val query: Query, val anchor: String) {
+class VariablePathAnalysis(query: Query, val anchor: String) {
 
     private val vars = query.resultVars.toSet()
     private val visitor = DependencyPathVisitor()
@@ -50,8 +50,8 @@ class VariablePathAnalysis(private val query: Query, val anchor: String) {
             if (v.isEmpty())
                 throw Exception("Unable to derive dependency path from ?$anchor to ?$k")
 
-            println("Dependency paths from $anchor to $k:")
-            v.forEach { path -> println(path.joinToString("->")) }
+            /*println("Dependency paths from $anchor to $k:")
+            v.forEach { path -> println(path.joinToString("->")) }*/
 
             // We have a simple property access if there is exactly one path and that path is of length one (anchor in direct relation to property, in forward direction)
             if (v.size == 1 && v.first().size == 1 && !v.first().first().backward)
@@ -60,6 +60,7 @@ class VariablePathAnalysis(private val query: Query, val anchor: String) {
         }
     }
 
+    // we don't have a use for this right now but i thought *real hard* about it so you better believe we're going to keep it around
     private fun distinctAnonymousVariables() {
         val anonymousVariables = visitor.variableDependencies.flatMap { listOf(it.s, it.o) }.toSet() - vars
         val variableEquivalenceMap = anonymousVariables.associateWith { it }.toMutableMap()

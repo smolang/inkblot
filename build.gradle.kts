@@ -2,6 +2,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     kotlin("jvm") version "1.7.21"
+    kotlin("plugin.serialization") version "1.8.0"
     id("com.github.johnrengelman.shadow") version "7.0.0"
     application
 }
@@ -19,6 +20,7 @@ dependencies {
     implementation("org.apache.jena:apache-jena-libs:4.4.0")
     implementation("com.github.ajalt.clikt:clikt:3.5.0")
     implementation("org.slf4j:slf4j-nop:2.0.6")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0-RC")
 }
 
 tasks.test {

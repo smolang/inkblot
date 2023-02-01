@@ -4,10 +4,17 @@ import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.core.subcommands
 import com.github.ajalt.clikt.parameters.arguments.argument
 import com.github.ajalt.clikt.parameters.options.option
+import inkblot.codegen.ClassConfig
+import inkblot.codegen.Configuration
+import inkblot.codegen.PropertyConfig
 import inkblot.codegen.SemanticObjectGenerator
 import inkblot.reasoning.ParameterAnalysis
 import inkblot.reasoning.VariableProperties
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.apache.jena.query.ParameterizedSparqlString
+import java.io.File
 
 class Inkblt : CliktCommand() {
     override fun run() = Unit
@@ -30,27 +37,28 @@ class Analyze: CliktCommand(help="Analyze a SPARQL query") {
 }
 
 class Generate: CliktCommand(help="Generate semantic object for statement") {
-    private val query: String by argument(help="SPARQL select query for object")
-    private val anchor by option(help="anchor variable of query")
+    private val config: String by argument(help="JSON file containing SPARQL queries and options")
 
     override fun run() {
         org.apache.jena.query.ARQ.init()
 
-        val q = ParameterizedSparqlString(query)
-        q.setNsPrefix("bk", "http://rec0de.net/ns/bike#")
-        val queryObj = q.asQuery()
-        val anchorOrDefault = if(anchor == null) queryObj.resultVars.first() else anchor!!
+        val jsonCfg = File(config)
+        val cfg: Map<String, ClassConfig> = Json.decodeFromString(jsonCfg.readText())
 
-        val variableInfo = mutableMapOf(
-            "mfg" to VariableProperties(true, true, "Int", "<http://rec0de.net/ns/bike#mfgDate>"),
-            "fw" to VariableProperties(false, true, "Wheel", null, true),
-            "bw" to VariableProperties(true, true, "Wheel", null, true),
-            "bells" to VariableProperties(true, false, "Bell", null, true)
-        )
+        val classNames = cfg.keys.toSet()
 
-        val generator = SemanticObjectGenerator(queryObj, anchorOrDefault, "http://rec0de.net/ns/bike#", variableInfo)
+        cfg.forEach { (className, classConfig) ->
+            val variableInfo = classConfig.properties.map { (propName, propConfig) ->
+                val nullable = propConfig.multiplicity == "?"
+                val functional = propConfig.multiplicity != "*"
+                val objectReference = classNames.contains(propConfig.datatype)
+                Pair(propConfig.sparql, VariableProperties(propName, nullable, functional, propConfig.datatype, objectReference))
+            }.toMap()
 
-        print(generator.gen())
+            val query = ParameterizedSparqlString(classConfig.query).asQuery()
+            val generator = SemanticObjectGenerator(className, query, classConfig.anchor, "http://rec0de.net/ns/bike#", variableInfo)
+            println(generator.gen())
+        }
     }
 }
 

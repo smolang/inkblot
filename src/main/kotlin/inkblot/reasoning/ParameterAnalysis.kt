@@ -11,14 +11,12 @@ object ParameterAnalysis {
     private val functionalProperties = getFunctionalProperties()
     private val inverseFunctionalProperties = getFunctionalProperties(true)
 
-    fun deriveTypes(query: Query, anchor: String): Map<String,VariableProperties> {
+    fun deriveTypes(query: Query, anchor: String) {
         if(!query.isSelectType)
             throw Exception("Query should be a SELECT")
         query.resetResultVars()
 
         val vars = query.resultVars.toSet()
-        val results = vars.associateWith { VariableProperties() }
-        results[anchor]!!.nullable = false
 
         println("Trying to derive info for these variables:")
         println(vars)
@@ -47,19 +45,12 @@ object ParameterAnalysis {
                 // if there is a safe path to the variable, the variable has to be instantiated and the corresponding property cannot be null
                 else {
                     println("\tsafe path")
-                    results[k]!!.nullable = false
                 }
 
                 if(max == 1.0) {
                     println("\tfunctional path")
-                    results[k]!!.functional = true
                 }
             }
-
-            // We have a simple property access if there is exactly one path and that path is of length one (anchor in direct relation to property, in forward direction)
-            if(v.size == 1 && v.first().size == 1 && !v.first().first().backward)
-                results[k]!!.isSimplePropertyViaURI = v.first().first().dependency.p
-
         }
 
         // TODO: find 'anchor subgraph', ie nodes that have to be deleted with the object
@@ -138,25 +129,6 @@ object ParameterAnalysis {
 
         println()
 
-        // before doing anything else, we'll check that no variable occurs in different optional contexts allowing potentially conflicting bindings
-        val optCtxStacks = visitor.variablesInOptionalContexts.groupBy { it.first }.mapValues { (_, v) -> v.map { it.second } }
-        vars.filter { results[it]!!.nullable }.forEach {v ->
-            val stacks = optCtxStacks[v]!!.distinct().sortedBy { it.length }.toMutableList() // non-null assertion is safe since nullable vars occur in at least one context
-            val distinctBindings = mutableListOf<String>()
-
-            while(stacks.size > 0) {
-                // first item in the list must be a distinct binding since it is the shortest stack by length and thus cannot have another item as a prefix
-                val top = stacks.removeFirst()
-                // if we have a binding near the top of the stack, all bindings in sub-contexts are safe (i think. i don't actually know how SPARQL works here exactly)
-                stacks.removeAll { it.startsWith(top) }
-                distinctBindings.add(top)
-            }
-
-            //println("Variable $v has distinct optional bindings ${distinctBindings.joinToString("; ")}")
-            if(distinctBindings.size > 1)
-                throw Exception("Optional variable ?$v has potentially conflicting bindings in different optional contexts")
-        }
-
         val rangeRelevantPredicates = visitor.variableInRangesOf.values.flatten().toSet()
         val domainRelevantPredicates = visitor.variableInDomainsOf.values.flatten().toSet()
         val rangePredicatesSparql = rangeRelevantPredicates.joinToString(" "){ "<$it>" }
@@ -188,8 +160,6 @@ object ParameterAnalysis {
             }
             println()
         }
-
-        return results
     }
 
     private fun pathMultiplicity(path: List<VarDepEdge>): Pair<Double, Double> {
@@ -239,11 +209,11 @@ object ParameterAnalysis {
 }
 
 data class VariableProperties(
-    var nullable: Boolean = true,
-    var functional: Boolean = false,
-    var datatype: String? = "Unk",
-    var isSimplePropertyViaURI: String? = null,
-    var isObjectReference: Boolean = false
+    val targetName: String,
+    val nullable: Boolean,
+    val functional: Boolean,
+    val datatype: String,
+    val isObjectReference: Boolean
 )
 
 

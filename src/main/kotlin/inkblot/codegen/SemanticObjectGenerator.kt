@@ -54,26 +54,26 @@ class SemanticObjectGenerator(private val className: String, private val query: 
 
     private fun genFactoryCreate() : String {
         val synthesizedCreateQuery = synthesizer.baseCreationUpdate()
-        val constructorVars = variableInfo.mapValues { (v, props) ->
+        val constructorVars = variableInfo.values.map { props ->
             if(props.isObjectReference) {
                 when {
-                    !props.functional -> "$v.map{ it.uri }"
-                    props.nullable -> "$v?.uri"
-                    else -> "$v.uri"
+                    !props.functional -> "${props.targetName}.map{ it.uri }"
+                    props.nullable -> "${props.targetName}?.uri"
+                    else -> "${props.targetName}.uri"
                 }
             }
             else
-                v
-        }.values
+                props.targetName
+        }
 
         val constructorParamLine = (listOf("uri") + constructorVars).joinToString(", ")
 
-        val safeInitObjRefBindings = variableInfo.filterValues { it.functional && !it.nullable && it.isObjectReference }.keys.map {
-            "template.setIri(\"$it\", $it.uri)"
+        val safeInitObjRefBindings = variableInfo.filterValues { it.functional && !it.nullable && it.isObjectReference }.map { (sparql, info) ->
+            "template.setIri(\"$sparql\", ${info.targetName}.uri)"
         }
 
-        val safeInitDataBindings = variableInfo.filterValues { it.functional && !it.nullable && !it.isObjectReference }.keys.map {
-            "template.setParam(\"$it\", ResourceFactory.createTypedLiteral($it))"
+        val safeInitDataBindings = variableInfo.filterValues { it.functional && !it.nullable && !it.isObjectReference }.map { (sparql, info) ->
+            "template.setParam(\"$sparql\", ResourceFactory.createTypedLiteral(${info.targetName}))"
         }
 
         return """
@@ -100,15 +100,15 @@ class SemanticObjectGenerator(private val className: String, private val query: 
         if(vars.isEmpty())
             return ""
 
-        val initializers = vars.mapValues { (v, props) ->
+        val initializers = vars.mapValues { (sparql, props) ->
             val targetBinding = if(props.isObjectReference)
-                "partialUpdate.setIri(\"v\", $v.uri)"
+                "partialUpdate.setIri(\"v\", ${props.targetName}.uri)"
             else
-                "partialUpdate.setParam(\"v\", ResourceFactory.createTypedLiteral($v))"
+                "partialUpdate.setParam(\"v\", ResourceFactory.createTypedLiteral(${props.targetName}))"
 
             """
-                if($v != null) {
-                    val partialUpdate = ParameterizedSparqlString("${synthesizer.initializerUpdate(v)}")
+                if(${props.targetName} != null) {
+                    val partialUpdate = ParameterizedSparqlString("${synthesizer.initializerUpdate(sparql)}")
                     partialUpdate.setIri("anchor", uri)
                     $targetBinding
                     partialUpdate.asUpdate().forEach { update.add(it) }
@@ -125,15 +125,15 @@ class SemanticObjectGenerator(private val className: String, private val query: 
         if(vars.isEmpty())
             return ""
 
-        val initializers = vars.mapValues { (v, props) ->
+        val initializers = vars.mapValues { (sparql, props) ->
             val targetBinding = if(props.isObjectReference)
-                    "partialUpdate.setIri(\"$v\", it.uri)"
+                    "partialUpdate.setIri(\"$sparql\", it.uri)"
                 else
-                    "partialUpdate.setParam(\"$v\", ResourceFactory.createTypedLiteral(it))"
+                    "partialUpdate.setParam(\"$sparql\", ResourceFactory.createTypedLiteral(it))"
 
             """
-                $v.forEach {
-                    val partialUpdate = ParameterizedSparqlString("${synthesizer.initializerUpdate(v)}")
+                ${props.targetName}.forEach {
+                    val partialUpdate = ParameterizedSparqlString("${synthesizer.initializerUpdate(sparql)}")
                     partialUpdate.setIri("$anchor", uri)
                     $targetBinding
                     partialUpdate.asUpdate().forEach { part -> update.add(part) }
@@ -145,7 +145,7 @@ class SemanticObjectGenerator(private val className: String, private val query: 
     }
 
     private fun genFactoryInstantiate() : String {
-        val constructorArgs = (listOf("uri") + variableInfo.keys).joinToString(", ")
+        val constructorArgs = (listOf("uri") + variableInfo.values.map { it.targetName }).joinToString(", ")
         return """
             override fun instantiateSingleResult(lines: List<QuerySolution>): $className? {
                 if(lines.isEmpty())
@@ -165,12 +165,12 @@ class SemanticObjectGenerator(private val className: String, private val query: 
         if(functionalVars.isEmpty())
             return ""
 
-        val assignments = functionalVars.mapValues { (v, props) ->
+        val assignments = functionalVars.mapValues { (sparql, props) ->
             when {
-                props.isObjectReference && props.nullable -> "val $v = lines.first().getResource(\"$v\")?.uri"
-                props.isObjectReference -> "val $v = lines.first().getResource(\"$v\").uri"
-                props.nullable -> "val $v = Inkblot.types.literalToNullable${props.datatype}(lines.first().getLiteral(\"$v\"))"
-                else -> "val $v = Inkblot.types.literalTo${props.datatype}(lines.first().getLiteral(\"$v\"))"
+                props.isObjectReference && props.nullable -> "val ${props.targetName} = lines.first().getResource(\"$sparql\")?.uri"
+                props.isObjectReference -> "val ${props.targetName} = lines.first().getResource(\"$sparql\").uri"
+                props.nullable -> "val ${props.targetName} = Inkblot.types.literalToNullable${props.datatype}(lines.first().getLiteral(\"$sparql\"))"
+                else -> "val ${props.targetName} = Inkblot.types.literalTo${props.datatype}(lines.first().getLiteral(\"$sparql\"))"
             }
         }.values.joinToString("\n")
 
@@ -183,18 +183,18 @@ class SemanticObjectGenerator(private val className: String, private val query: 
         if(nonFuncVars.isEmpty())
             return ""
 
-        val assignments = nonFuncVars.mapValues { (v, props) ->
+        val assignments = nonFuncVars.mapValues { (sparql, props) ->
             if(props.isObjectReference)
-                "val $v = lines.mapNotNull { it.getResource(\"$v\")?.uri }.distinct()"
+                "val ${props.targetName} = lines.mapNotNull { it.getResource(\"$sparql\")?.uri }.distinct()"
             else
-                "val $v = lines.mapNotNull { Inkblot.types.literalToNullable${props.datatype}(it.getLiteral(\"$v\")) }.distinct()"
+                "val ${props.targetName} = lines.mapNotNull { Inkblot.types.literalToNullable${props.datatype}(it.getLiteral(\"$sparql\")) }.distinct()"
         }.values.joinToString("\n")
 
         return "\n// for higher cardinality properties, we have to collect all distinct values\n$assignments\n"
     }
 
     private fun genObject(): String {
-        val constructorVars = variableInfo.keys.joinToString(", ")
+        val constructorVars = variableInfo.values.joinToString(", "){ it.targetName }
         return """
             class $className internal constructor(${genInternalConstructorArgs()}) : SemanticObject(uri) {
                 companion object {
@@ -212,11 +212,11 @@ class SemanticObjectGenerator(private val className: String, private val query: 
     }
 
     private fun genExternalConstructorArgs(): String {
-        return variableInfo.map { (v, info) ->
+        return variableInfo.map { (_, info) ->
             when {
-                info.functional && info.nullable -> "$v: ${info.datatype}?"
-                info.functional -> "$v: ${info.datatype}"
-                else -> "$v: List<${info.datatype}>"
+                info.functional && info.nullable -> "${info.targetName}: ${info.datatype}?"
+                info.functional -> "${info.targetName}: ${info.datatype}"
+                else -> "${info.targetName}: List<${info.datatype}>"
             }
         }.joinToString(", ")
     }
@@ -224,14 +224,14 @@ class SemanticObjectGenerator(private val className: String, private val query: 
     private fun genInternalConstructorArgs(): String {
         val args = mutableListOf("uri: String")
 
-        variableInfo.forEach { (v, info) ->
+        variableInfo.values.forEach { info ->
             val arg = when {
-                info.isObjectReference && info.functional && info.nullable -> "$v: String?"
-                info.isObjectReference && info.functional -> "$v: String"
-                info.isObjectReference -> "$v: List<String>"
-                info.functional && info.nullable -> "$v: ${info.datatype}?"
-                info.functional -> "$v: ${info.datatype}"
-                else -> "$v: List<${info.datatype}>"
+                info.isObjectReference && info.functional && info.nullable -> "${info.targetName}: String?"
+                info.isObjectReference && info.functional -> "${info.targetName}: String"
+                info.isObjectReference -> "${info.targetName}: List<String>"
+                info.functional && info.nullable -> "${info.targetName}: ${info.datatype}?"
+                info.functional -> "${info.targetName}: ${info.datatype}"
+                else -> "${info.targetName}: List<${info.datatype}>"
             }
             args.add(arg)
         }
@@ -262,7 +262,7 @@ class SemanticObjectGenerator(private val className: String, private val query: 
 
     private fun genSingletNonNullDataProperty(varName: String, sparqlName: String, datatype: String): String {
         return """
-            var $varName: $datatype = $sparqlName
+            var $varName: $datatype = $varName
                 set(value) {
                     ${indent(genDeleteCheck(varName), 5)}
 
@@ -279,7 +279,7 @@ class SemanticObjectGenerator(private val className: String, private val query: 
 
     private fun genSingletNullableDataProperty(varName: String, sparqlName: String, datatype: String): String {
         return """
-            var $varName: $datatype? = $sparqlName
+            var $varName: $datatype? = $varName
                 set(value) {
                     ${indent(genDeleteCheck(varName), 5)}
                     
@@ -310,7 +310,7 @@ class SemanticObjectGenerator(private val className: String, private val query: 
     private fun genMultiDataProperty(varName: String, sparqlName: String, datatype: String): String {
         val valueNode = "ResourceFactory.createTypedLiteral(data).asNode()"
         return """
-            private val inkblt_$varName = $sparqlName.toMutableList()
+            private val inkblt_$varName = $varName.toMutableList()
 
             val $varName: List<$datatype>
                 get() = inkblt_$varName
@@ -349,7 +349,7 @@ class SemanticObjectGenerator(private val className: String, private val query: 
 
     private fun genSingletNonNullObjectProperty(varName: String, sparqlName: String, datatype: String): String {
         return """
-            private var _inkbltRef_$varName: String = $sparqlName
+            private var _inkbltRef_$varName: String = $varName
             var $varName: $datatype
                 get() = $datatype.loadFromURI(_inkbltRef_$varName)
             set(value) {
@@ -366,7 +366,7 @@ class SemanticObjectGenerator(private val className: String, private val query: 
 
     private fun genSingletNullableObjectProperty(varName: String, sparqlName: String, datatype: String): String {
         return """
-            private var _inkbltRef_$varName: String? = $sparqlName
+            private var _inkbltRef_$varName: String? = $varName
             var $varName: $datatype? = null
                 get() {
                     return if(field == null && _inkbltRef_$varName != null)
@@ -406,7 +406,7 @@ class SemanticObjectGenerator(private val className: String, private val query: 
     private fun genMultiObjectProperty(varName: String, sparqlName: String, datatype: String): String {
         val valueNode = "ResourceFactory.createResource(obj.uri).asNode()"
         return """
-            private val _inkbltRef_$varName = $sparqlName.toMutableSet()
+            private val _inkbltRef_$varName = $varName.toMutableSet()
             val $varName: List<$datatype>
                 get() = _inkbltRef_$varName.map { ${datatype}Factory.loadFromURI(it) } // this is cached from DB so I hope it's fine?
 

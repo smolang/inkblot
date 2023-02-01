@@ -14,7 +14,6 @@
 				"multiplicity": "?"
 			},
 			"bells" : {
-				"sparql": "bells",
 				"datatype": "Bell",
 				"multiplicity": "*"
 			},
@@ -51,7 +50,6 @@
 		"query": "PREFIX bk: <http://rec0de.net/ns/bike#> SELECT ?bell ?color WHERE { ?bell a bk:bell; bk:color ?color }",
 		"properties": {
 			"color" : {
-				"sparql": "color",
 				"datatype": "String",
 				"multiplicity": "!"
 			}

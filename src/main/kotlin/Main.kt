@@ -59,7 +59,7 @@ class Generate: CliktCommand(help="Generate semantic object for statement") {
                 val nullable = propConfig.multiplicity == "?"
                 val functional = propConfig.multiplicity != "*"
                 val objectReference = classNames.contains(propConfig.datatype)
-                Pair(propConfig.sparql, VariableProperties(propName, nullable, functional, propConfig.datatype, objectReference))
+                Pair(propConfig.sparql ?: propName, VariableProperties(propName, nullable, functional, propConfig.datatype, objectReference))
             }.toMap()
 
             val query = ParameterizedSparqlString(classConfig.query).asQuery()

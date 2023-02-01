@@ -6,188 +6,194 @@ import org.apache.jena.query.QuerySolution
 import org.apache.jena.rdf.model.ResourceFactory
 
 object BikeFactory : SemanticObjectFactory<Bike>() {
-    private const val prefix = "http://rec0de.net/ns/bike#"
-    override val query = "PREFIX bk: <${prefix}> SELECT ?bike ?mfg ?fw ?bw ?bells WHERE { ?bike a bk:bike; bk:hasFrame [bk:frontWheel ?fw] OPTIONAL { ?bike bk:hasFrame [bk:backWheel ?bw] } OPTIONAL { ?bike bk:mfgDate ?mfg } OPTIONAL { ?bike bk:hasFrame [bk:hasBell ?bells] } }"
+    override val query = "PREFIX  bk:   <http://rec0de.net/ns/bike#>  SELECT  ?bike ?mfg ?fw ?bw ?bells WHERE   { ?bike  a              bk:bike ;            bk:hasFrame    _:b0 .     _:b0   bk:frontWheel  ?fw     OPTIONAL       { ?bike  bk:hasFrame   _:b1 .         _:b1   bk:backWheel  ?bw       }     OPTIONAL       { ?bike  bk:mfgDate  ?mfg }     OPTIONAL       { ?bike  bk:hasFrame  _:b2 .         _:b2   bk:hasBell   ?bells       }   } "
     override val anchor = "bike"
-
-    fun create(mfgDate: Int?, frontWheel: Wheel, backWheel: Wheel?, bells: List<Bell>): Bike {
-        val uri = prefix + "bike" + Inkblot.freshSuffixFor("bike")
-
-
-        val template = ParameterizedSparqlString("INSERT DATA { ?bike a bk:bike; bk:hasFrame [bk:frontWheel ?fw] }")
-        template.setNsPrefix("bk", prefix)
-        template.setIri("bike", uri)
-        template.setIri("fw", frontWheel.uri)
+    
+    fun create(fw: Wheel, bw: Wheel?, bells: List<Bell>, mfg: Int?): Bike {
+        val uri = "http://rec0de.net/ns/bike#bike" + Inkblot.freshSuffixFor("bike")
+    
+        // set non-null parameters and create object
+        val template = ParameterizedSparqlString("INSERT DATA { ?anchor <http://rec0de.net/ns/bike#hasFrame> [<http://rec0de.net/ns/bike#frontWheel> ?fw]. ?anchor <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://rec0de.net/ns/bike#bike>. }")
+        template.setIri("anchor", uri)
+        template.setIri("fw", fw.uri)
+    
         val update = template.asUpdate()
-
-        if(mfgDate != null) {
-            val mfgUpdate = ParameterizedSparqlString("INSERT DATA { ?bike bk:mfgDate ?mfg }")
-            mfgUpdate.setNsPrefix("bk", prefix)
-            mfgUpdate.setIri("bike", uri)
-            mfgUpdate.setParam("mfg", ResourceFactory.createTypedLiteral(mfgDate))
-            update.add(mfgUpdate.asUpdate().first())
+    
+        // initialize nullable functional properties
+        if(bw != null) {
+            val partialUpdate = ParameterizedSparqlString("INSERT DATA { ?anchor <http://rec0de.net/ns/bike#hasFrame> [<http://rec0de.net/ns/bike#backWheel> ?v]. }")
+            partialUpdate.setIri("anchor", uri)
+            partialUpdate.setIri("v", bw.uri)
+            partialUpdate.asUpdate().forEach { update.add(it) }
         }
-
-        if(backWheel != null) {
-            val mfgUpdate = ParameterizedSparqlString("INSERT DATA { ?bike bk:hasFrame [bk:backWheel ?bw] }")
-            mfgUpdate.setNsPrefix("bk", prefix)
-            mfgUpdate.setIri("bike", uri)
-            mfgUpdate.setIri("bw", backWheel.uri)
-            update.add(mfgUpdate.asUpdate().first())
+    
+        if(mfg != null) {
+            val partialUpdate = ParameterizedSparqlString("INSERT DATA { ?anchor <http://rec0de.net/ns/bike#mfgDate> ?v. }")
+            partialUpdate.setIri("anchor", uri)
+            partialUpdate.setParam("v", ResourceFactory.createTypedLiteral(mfg))
+            partialUpdate.asUpdate().forEach { update.add(it) }
         }
-
+    
+    
+        // initialize non-functional properties
         bells.forEach {
-            val bellUpdate = ParameterizedSparqlString("INSERT DATA { ?bike bk:hasFrame [bk:hasBell ?bell] }")
-            bellUpdate.setNsPrefix("bk", prefix)
-            bellUpdate.setIri("bike", uri)
-            bellUpdate.setIri("bell", it.uri)
-            update.add(bellUpdate.asUpdate().first())
+            val partialUpdate = ParameterizedSparqlString("INSERT DATA { ?anchor <http://rec0de.net/ns/bike#hasFrame> [<http://rec0de.net/ns/bike#hasBell> ?v]. }")
+            partialUpdate.setIri("bike", uri)
+            partialUpdate.setIri("bells", it.uri)
+            partialUpdate.asUpdate().forEach { part -> update.add(part) }
         }
-
+    
         Inkblot.changelog.add(CreateNode(update))
-
-        return Bike(uri, mfgDate, frontWheel.uri, backWheel?.uri, bells.map { it.uri })
+        return Bike(uri, fw.uri, bw?.uri, bells.map{ it.uri }, mfg)
     }
-
+    
     override fun instantiateSingleResult(lines: List<QuerySolution>): Bike? {
         if(lines.isEmpty())
             return null
-
-        // for single cardinality properties we can read the first only, as all others have to be the same
+    
         val uri = lines.first().getResource("bike").uri
-        val mfgD = lines.first().getLiteral("mfg")?.int
-
+    
+        // for functional properties we can read the first only, as all others have to be the same
         val fw = lines.first().getResource("fw").uri
         val bw = lines.first().getResource("bw")?.uri
-
-        // for higher cardinality properties, we have to collect all distinct ones
+        val mfg = Inkblot.types.literalToNullableInt(lines.first().getLiteral("mfg"))
+    
+    
+        // for higher cardinality properties, we have to collect all distinct values
         val bells = lines.mapNotNull { it.getResource("bells")?.uri }.distinct()
-
-        return Bike(uri, mfgD, fw, bw, bells)
+    
+        return Bike(uri, fw, bw, bells, mfg) 
     }
 }
 
-class Bike internal constructor(uri: String, mfgDate: Int?, frontWheel: String, backWheel: String?, bells: List<String>) : SemanticObject(uri) {
+class Bike internal constructor(uri: String, fw: String, bw: String?, bells: List<String>, mfg: Int?) : SemanticObject(uri) {
     companion object {
-        private const val prefix = "http://rec0de.net/ns/bike#"
-        fun create(mfgDate: Int?, frontWheel: Wheel, backWheel: Wheel?, bells: List<Bell>) = BikeFactory.create(mfgDate, frontWheel, backWheel, bells)
-        fun loadFromURI(uri: String) = BikeFactory.loadFromURI(uri)
+        fun create(fw: Wheel, bw: Wheel?, bells: List<Bell>, mfg: Int?) = BikeFactory.create(fw, bw, bells, mfg)
         fun loadAll() = BikeFactory.loadAll()
-        fun loadSelected(filterStr: String) = BikeFactory.loadSelected(filterStr)
+        fun loadSelected(filter: String) = BikeFactory.loadSelected(filter)
+        fun loadFromURI(uri: String) = BikeFactory.loadFromURI(uri)
     }
-
-    // Single cardinality properties can make do with just a field
-    var mfgDate: Int? = mfgDate
-        set(value) {
-            if(deleted)
-                throw Exception("Trying to set property 'mfgDate' on deleted object <$uri>")
-            field = value
-
-            if(value == null)
-                Inkblot.changelog.add(UnsetSingletProperty(uri, prefix + "mfgDate"))
-            else
-                Inkblot.changelog.add(ChangeSingletProperty(uri, prefix + "mfgDate", ResourceFactory.createTypedLiteral(mfgDate).asNode()))
-            markDirty()
-        }
-
-    // Singlet object references
-    private var _inkbltRef_frontWheel: String = frontWheel
+    
+    private var _inkbltRef_frontWheel: String = fw
     var frontWheel: Wheel
         get() = Wheel.loadFromURI(_inkbltRef_frontWheel)
-        set(value) {
-            _inkbltRef_frontWheel = value.uri
-
-            val template = ParameterizedSparqlString("DELETE { ?frame bk:frontWheel ?x } INSERT { ?frame bk:frontWheel ?w } WHERE { ?bike bk:hasFrame ?frame. ?frame bk:frontWheel ?x }")
-            template.setNsPrefix("bk", prefix)
-            template.setIri("bike", uri)
-            template.setIri("w", value.uri)
-            Inkblot.changelog.add(ComplexPropertyChange(template.asUpdate()))
-            markDirty()
-        }
-
-    private var _inkbltRef_backWheel: String? = backWheel
+    set(value) {
+        if(deleted)
+            throw Exception("Trying to set property 'frontWheel' on deleted object <$uri>")
+    
+        val template = ParameterizedSparqlString("DELETE { ?inkblt1 <http://rec0de.net/ns/bike#frontWheel> ?o. } INSERT { ?inkblt1 <http://rec0de.net/ns/bike#frontWheel> ?n.} WHERE { ?anchor <http://rec0de.net/ns/bike#hasFrame> [<http://rec0de.net/ns/bike#frontWheel> ?inkblt1]. }")
+        template.setIri("anchor", uri)
+        template.setParam("o", ResourceFactory.createResource(value.uri).asNode())
+        template.setParam("n", ResourceFactory.createResource(value.uri).asNode())
+        val cn = ComplexPropertyRemove(template.asUpdate())
+        Inkblot.changelog.add(cn)
+    
+        _inkbltRef_frontWheel = value.uri
+        markDirty()
+    }
+    
+    private var _inkbltRef_backWheel: String? = bw
     var backWheel: Wheel? = null
         get() {
             return if(field == null && _inkbltRef_backWheel != null)
-                Wheel.loadFromURI(_inkbltRef_backWheel!!)
+                WheelFactory.loadFromURI(_inkbltRef_backWheel!!)
             else
                 field
         }
         set(value) {
+            if(deleted)
+                throw Exception("Trying to set property 'backWheel' on deleted object <$uri>")
             field = value
+    
+            val oldValueNode = ResourceFactory.createResource(_inkbltRef_backWheel).asNode()
+            val newValueNode = ResourceFactory.createResource(value?.uri).asNode()
+    
+            if(value == null) {
+                // Unset value
+                val template = ParameterizedSparqlString("DELETE { ?inkblt2 <http://rec0de.net/ns/bike#backWheel> ?o. } WHERE { ?anchor <http://rec0de.net/ns/bike#hasFrame> ?inkblt2. }")
+                template.setIri("anchor", uri)
+                template.setParam("o", oldValueNode)
+                val cn = ComplexPropertyRemove(template.asUpdate())
+                Inkblot.changelog.add(cn)
+            }
+            else if(_inkbltRef_backWheel == null) {
+                // Pure insertion
+                val template = ParameterizedSparqlString("INSERT { ?inkblt3 <http://rec0de.net/ns/bike#backWheel> ?o. } WHERE { ?anchor <http://rec0de.net/ns/bike#hasFrame> ?inkblt3. }")
+                template.setIri("anchor", uri)
+                template.setParam("o", newValueNode)
+                val cn = ComplexPropertyAdd(template.asUpdate())
+                Inkblot.changelog.add(cn)
+            }
+            else {
+                // Change value
+                val template = ParameterizedSparqlString("DELETE { ?inkblt4 <http://rec0de.net/ns/bike#backWheel> ?o. } INSERT { ?inkblt4 <http://rec0de.net/ns/bike#backWheel> ?n.} WHERE { ?anchor <http://rec0de.net/ns/bike#hasFrame> [<http://rec0de.net/ns/bike#backWheel> ?inkblt4]. }")
+                template.setIri("anchor", uri)
+                template.setParam("o", newValueNode)
+                template.setParam("n", newValueNode)
+                val cn = ComplexPropertyRemove(template.asUpdate())
+                Inkblot.changelog.add(cn)
+            }
+    
             _inkbltRef_backWheel = value?.uri
-
-            val template = if(value != null)
-                ParameterizedSparqlString("DELETE { ?frame bk:backWheel ?x } WHERE { ?bike bk:hasFrame ?frame. ?frame bk:backWheel ?x }; INSERT { ?frame bk:backWheel ?w } WHERE { ?bike bk:hasFrame ?frame }")
-            else
-                ParameterizedSparqlString("DELETE { ?frame bk:backWheel ?x } WHERE { ?bike bk:hasFrame ?frame. ?frame bk:backWheel ?x }")
-            template.setNsPrefix("bk", prefix)
-            template.setIri("bike", uri)
-            if(value != null)
-                template.setIri("w", value.uri)
-
-            Inkblot.changelog.add(ComplexPropertyChange(template.asUpdate()))
             markDirty()
         }
-
-    // Higher cardinality object references need some more trickery
+    
     private val _inkbltRef_bells = bells.toMutableSet()
     val bells: List<Bell>
-        get() = _inkbltRef_bells.map { Bell.loadFromURI(it) } // this is cached from DB so i hope it's fine?
-
-    fun bells_add(bell: Bell) {
-        _inkbltRef_bells.add(bell.uri)
-
-        val template = ParameterizedSparqlString("INSERT { ?frame bk:hasBell ?o } WHERE { ?bike bk:hasFrame ?frame }")
-        template.setNsPrefix("bk", prefix)
-        template.setIri("bike", uri)
-        template.setIri("o", bell.uri)
-        Inkblot.changelog.add(ComplexPropertyAdd(template.asUpdate()))
+        get() = _inkbltRef_bells.map { BellFactory.loadFromURI(it) } // this is cached from DB so I hope it's fine?
+    
+    fun bells_add(obj: Bell) {
+        if(deleted)
+            throw Exception("Trying to set property 'bells' on deleted object <$uri>")
+        _inkbltRef_bells.add(obj.uri)
+    
+        val template = ParameterizedSparqlString("INSERT { ?inkblt5 <http://rec0de.net/ns/bike#hasBell> ?o. } WHERE { ?anchor <http://rec0de.net/ns/bike#hasFrame> ?inkblt5. }")
+        template.setIri("anchor", uri)
+        template.setParam("o", ResourceFactory.createResource(obj.uri).asNode())
+        val cn = ComplexPropertyAdd(template.asUpdate())
+        Inkblot.changelog.add(cn)
         markDirty()
     }
-
-    fun bells_remove(bell: Bell) {
-        _inkbltRef_bells.remove(bell.uri)
-
-        val template = ParameterizedSparqlString("DELETE { ?frame bk:hasBell ?o } WHERE { ?bike bk:hasFrame ?frame }")
-        template.setNsPrefix("bk", prefix)
-        template.setIri("bike", uri)
-        template.setIri("o", bell.uri)
-        Inkblot.changelog.add(ComplexPropertyRemove(template.asUpdate()))
+    
+    fun bells_remove(obj: Bell) {
+        if(deleted)
+            throw Exception("Trying to set property 'bells' on deleted object <$uri>")
+        _inkbltRef_bells.remove(obj.uri)
+    
+        val template = ParameterizedSparqlString("DELETE { ?inkblt6 <http://rec0de.net/ns/bike#hasBell> ?o. } WHERE { ?anchor <http://rec0de.net/ns/bike#hasFrame> ?inkblt6. }")
+        template.setIri("anchor", uri)
+        template.setParam("o", ResourceFactory.createResource(obj.uri).asNode())
+        val cn = ComplexPropertyRemove(template.asUpdate())
+        Inkblot.changelog.add(cn)
         markDirty()
     }
-
-    // Merge functionality
-    fun merge(other: Bike) {
-        if(deleted || other.deleted)
-            throw Exception("Trying to merge into/out of deleted objects <$uri> / <${other.uri}>")
-
-        // non-null asserted singlet properties can just be overwritten
-        _inkbltRef_frontWheel = other._inkbltRef_frontWheel // sneaking around lazy loading
-
-        // nullable singlet properties are overwritten if non-null in other
-        if(other.mfgDate != null)
-            mfgDate = other.mfgDate
-
-        // we can at least check for null-ness before triggering lazy load (does that make sense?)
-        if(other._inkbltRef_backWheel != null)
-            backWheel = other.backWheel
-
-        // non-singlet properties are just copied over (todo: enforcing size limits?)
-        _inkbltRef_bells.addAll(other._inkbltRef_bells)
-
-        other.delete(uri)
-        markDirty()
-    }
-
-    override fun delete() {
-        markDirty()
-        deleted = true
-
-        val template = ParameterizedSparqlString("DELETE { ?f ?p ?o} WHERE { ?bike bk:hasFrame ?f. ?f ?p ?o }; DELETE { ?s ?p ?f } WHERE { ?bike bk:hasFrame ?f. ?s ?p ?f }; DELETE WHERE { ?s ?p ?bike }; DELETE WHERE { ?bike ?p ?o }")
-        template.setNsPrefix("bk", prefix)
-        template.setIri("bike", uri)
-
-        Inkblot.changelog.add(ComplexDelete(template.asUpdate()))
-    }
+    
+    var mfgYear: Int? = mfg
+        set(value) {
+            if(deleted)
+                throw Exception("Trying to set property 'mfgYear' on deleted object <$uri>")
+    
+            val oldValueNode = ResourceFactory.createTypedLiteral(field).asNode()
+            val newValueNode = ResourceFactory.createTypedLiteral(value).asNode()
+            if(value == null) {
+                // Unset value
+                val cn = CommonPropertyRemove(uri, "http://rec0de.net/ns/bike#mfgDate", oldValueNode)
+                Inkblot.changelog.add(cn)
+            }
+            else if(field == null) {
+                // Pure insertion
+                val cn = CommonPropertyAdd(uri, "http://rec0de.net/ns/bike#mfgDate", newValueNode)
+                Inkblot.changelog.add(cn)
+            }
+            else {
+                // Update value
+                val cn = CommonPropertyChange(uri, "http://rec0de.net/ns/bike#mfgDate", oldValueNode, newValueNode!!)
+                Inkblot.changelog.add(cn)
+            }
+    
+            field = value
+            markDirty()
+        }
+    
+    // TODO: Merge
 }

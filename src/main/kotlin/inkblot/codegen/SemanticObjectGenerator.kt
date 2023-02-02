@@ -4,7 +4,14 @@ import inkblot.reasoning.VariableProperties
 import inkblot.runtime.Inkblot
 import org.apache.jena.query.Query
 
-class SemanticObjectGenerator(private val className: String, private val query: Query, private val anchor: String, private val namespace: String, private val variableInfo: Map<String, VariableProperties>) {
+class SemanticObjectGenerator(
+    private val className: String,
+    private val pkg: String,
+    private val query: Query,
+    private val anchor: String,
+    private val namespace: String,
+    private val variableInfo: Map<String, VariableProperties>
+) {
 
     private val synthesizer = QuerySynthesizer(query, anchor, variableInfo)
     private val changeNodeGenerator = ChangeNodeGenerator(synthesizer)
@@ -444,5 +451,5 @@ class SemanticObjectGenerator(private val className: String, private val query: 
         """.trimIndent()
     }
 
-    private fun pkg() = "package bikes\n"
+    private fun pkg() = "package $pkg\n"
 }

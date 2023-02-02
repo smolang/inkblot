@@ -25,6 +25,7 @@
 		}
 	},
 	"Wheel": {
+		"namespace": "http://rec0de.net/ns/wheels#",
 		"anchor": "wheel",
 		"query": "PREFIX bk: <http://rec0de.net/ns/bike#> SELECT ?wheel ?dia ?mfgD ?mfgN WHERE { ?wheel a bk:wheel; bk:diameter ?dia. OPTIONAL { ?wheel bk:mfgDate ?mfgD } OPTIONAL {?wheel bk:mfgName ?mfgN } }",
 		"properties": {

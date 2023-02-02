@@ -5,6 +5,7 @@ import bikes.Wheel
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.core.subcommands
 import com.github.ajalt.clikt.parameters.arguments.argument
+import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.option
 import inkblot.codegen.ClassConfig
 import inkblot.codegen.SemanticObjectGenerator
@@ -41,6 +42,8 @@ class Analyze: CliktCommand(help="Analyze a SPARQL query") {
 class Generate: CliktCommand(help="Generate semantic object for statement") {
     private val config: String by argument(help="JSON file containing SPARQL queries and options")
     private val outPath: String by argument(help="location where generated files should be placed")
+    private val pkg by option("-p", "--package", help="package identifier for generated files")
+    private val namespace by option(help="default namespace to use for new entities").default("http://rec0de.net/ns/inkblot#")
 
     override fun run() {
         org.apache.jena.query.ARQ.init()
@@ -49,6 +52,18 @@ class Generate: CliktCommand(help="Generate semantic object for statement") {
 
         if(!path.exists())
             throw Exception("Output location '$path' does not exist")
+
+        val packageId = if(pkg != null)
+                pkg!!
+            // we might be able to guess the correct package name based on the output location
+            else if(path.contains(Path("kotlin"))) {
+                println("Generating to source directory")
+                val parts = path.toList().map { it.toString() }
+                val kotlinIdx = parts.lastIndexOf("kotlin")
+                parts.subList(kotlinIdx+1, parts.size).joinToString(".")
+            }
+            else
+                "gen"
 
         val jsonCfg = File(config)
         val cfg: Map<String, ClassConfig> = Json.decodeFromString(jsonCfg.readText())
@@ -62,8 +77,9 @@ class Generate: CliktCommand(help="Generate semantic object for statement") {
                 Pair(propConfig.sparql ?: propName, VariableProperties(propName, nullable, functional, propConfig.datatype, objectReference))
             }.toMap()
 
+            val classNamespace = classConfig.namespace ?: namespace
             val query = ParameterizedSparqlString(classConfig.query).asQuery()
-            val generator = SemanticObjectGenerator(className, query, classConfig.anchor, "http://rec0de.net/ns/bike#", variableInfo)
+            val generator = SemanticObjectGenerator(className, packageId, query, classConfig.anchor, classNamespace, variableInfo)
 
             val destination = File(path.toFile(), "$className.kt")
             destination.writeText(generator.gen())

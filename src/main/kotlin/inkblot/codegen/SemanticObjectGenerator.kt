@@ -50,7 +50,7 @@ class SemanticObjectGenerator(
 
     private fun genFactory() = """
         object ${className}Factory : SemanticObjectFactory<$className>() {
-            override val query = "${query.toString().replace("\n", " ").replace(Regex("/\\s+/"), " ")}"
+            override val query = "${prettifySparql(query)}"
             override val anchor = "$anchor"
             
             ${indent(genFactoryCreate(), 3)}

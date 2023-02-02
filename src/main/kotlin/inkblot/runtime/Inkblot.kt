@@ -60,8 +60,6 @@ abstract class ComplexChangeNode(private val update: UpdateRequest) : ChangeNode
 
 class ComplexPropertyAdd(update: UpdateRequest) : ComplexChangeNode(update)
 class ComplexPropertyRemove(update: UpdateRequest) : ComplexChangeNode(update)
-class ComplexPropertyChange(update: UpdateRequest) : ComplexChangeNode(update)
-class ComplexDelete(update: UpdateRequest) : ComplexChangeNode(update)
 class CreateNode(update: UpdateRequest) : ComplexChangeNode(update)
 
 abstract class CommonChangeNode : ChangeNode

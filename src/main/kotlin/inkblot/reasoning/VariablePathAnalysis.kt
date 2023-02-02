@@ -128,3 +128,11 @@ class VariablePathAnalysis(query: Query, val anchor: String) {
     fun pathsTo(v: String) = dependencyPaths[v]!!
     fun pathsToConcrete(c: String) = concreteLeafPaths[c]!!
 }
+
+data class VariableProperties(
+    val targetName: String,
+    val nullable: Boolean,
+    val functional: Boolean,
+    val datatype: String,
+    val isObjectReference: Boolean
+)

@@ -14,6 +14,10 @@ class DependencyPathVisitor : ElementVisitorBase() {
     val concreteLeaves = mutableSetOf<String>()
     val safeVariables = mutableSetOf<String>()
 
+    // keeping these around for forbidden magic purposes
+    val variableInRangesOf = mutableMapOf<String,MutableSet<String>>()
+    val variableInDomainsOf = mutableMapOf<String,MutableSet<String>>()
+
     private fun print(data: Any) {
         println("\t".repeat(indentDepth) + data.toString())
     }
@@ -85,6 +89,7 @@ class DependencyPathVisitor : ElementVisitorBase() {
                 throw Exception("Variable ?${p.name} occurs in predicate position in '$it'. I don't think that's supported yet.")
 
             if (o.isVariable) {
+                variableInRange(o.name, p.uri)
                 // keeping track of in which optional contexts a variable appears to detect possibly conflicting bindings
                 variablesInOptionalContexts.add(Pair(o.name, optionalCtxStack.joinToString(",")))
                 if(optionalCtxStack.isEmpty())
@@ -92,6 +97,7 @@ class DependencyPathVisitor : ElementVisitorBase() {
             }
 
             if (s.isVariable) {
+                variableInDomain(s.name, p.uri)
                 // keeping track of in which optional contexts a variable appears to detect possibly conflicting bindings
                 variablesInOptionalContexts.add(Pair(s.name, optionalCtxStack.joinToString(",")))
                 if(optionalCtxStack.isEmpty())
@@ -106,12 +112,7 @@ class DependencyPathVisitor : ElementVisitorBase() {
 
             if (s.isVariable && o.isVariable && p.isConcrete) {
                 variableDependencies.add(
-                    VarDependency(
-                        s.name,
-                        p.uri,
-                        o.name,
-                        optionalCtxStack.isNotEmpty(),
-                    )
+                    VarDependency(s.name, p.uri, o.name, optionalCtxStack.isNotEmpty())
                 )
             }
         }
@@ -132,5 +133,19 @@ class DependencyPathVisitor : ElementVisitorBase() {
 
     override fun visit(el: ElementUnion?) {
         print("ElementUnion")
+    }
+
+    private fun variableInDomain(variable: String, inDomainOf: String) {
+        if(!variableInDomainsOf.containsKey(variable))
+            variableInDomainsOf[variable] = mutableSetOf(inDomainOf)
+        else
+            variableInDomainsOf[variable]!!.add(inDomainOf)
+    }
+
+    private fun variableInRange(variable: String, inRangeOf: String) {
+        if(!variableInRangesOf.containsKey(variable))
+            variableInRangesOf[variable] = mutableSetOf(inRangeOf)
+        else
+            variableInRangesOf[variable]!!.add(inRangeOf)
     }
 }

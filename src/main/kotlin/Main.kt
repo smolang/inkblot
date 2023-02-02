@@ -1,7 +1,5 @@
 import bikes.AppSpaceBike
-import bikes.Bell
 import bikes.Bike
-import bikes.Wheel
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.core.subcommands
 import com.github.ajalt.clikt.parameters.arguments.argument
@@ -12,9 +10,7 @@ import com.github.ajalt.clikt.parameters.options.option
 import inkblot.codegen.ClassConfig
 import inkblot.codegen.ConfigGenerator
 import inkblot.codegen.SemanticObjectGenerator
-import inkblot.reasoning.ParameterAnalysis
 import inkblot.reasoning.VariableProperties
-import inkblot.runtime.Inkblot
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -27,23 +23,7 @@ class Inkblt : CliktCommand() {
     override fun run() = Unit
 }
 
-class Analyze: CliktCommand(help="Analyze a SPARQL query") {
-    private val query: String by argument(help="SPARQL select query to analyze")
-    private val anchor by option(help="anchor variable of query")
-    override fun run() {
-        org.apache.jena.query.ARQ.init()
-
-        val q = ParameterizedSparqlString(query)
-        q.setNsPrefix("bk", "http://rec0de.net/ns/bike#")
-
-        val queryObj = q.asQuery()
-        val anchorOrDefault = if(anchor == null) queryObj.resultVars.first() else anchor!!
-
-        ParameterAnalysis.deriveTypes(q.asQuery(), anchorOrDefault)
-    }
-}
-
-class Generate: CliktCommand(help="Generate semantic object for statement") {
+class Generate: CliktCommand(help="Generate library classes from a configuration file") {
     private val config: String by argument(help="JSON file containing SPARQL queries and options")
     private val outPath: String by argument(help="location where generated files should be placed")
     private val pkg by option("-p", "--package", help="package identifier for generated files")
@@ -91,10 +71,12 @@ class Generate: CliktCommand(help="Generate semantic object for statement") {
     }
 }
 
-class Configure: CliktCommand(help="Generate semantic object for statement") {
+class Configure: CliktCommand(help="Generate a placeholder configuration file from a list of SPARQL queries") {
     private val output: String by argument(help="location of generated JSON configuration")
     private val queries: List<String> by argument(help="SPARQL select statements").multiple()
     private val override by option("-f", help="overwrite existing config file").flag("--force")
+    private val forbiddenMagic by option(help="use dark magic to guess sensible configuration values").flag()
+    private val endpoint by option(help="endpoint to use for dark magic analysis")
 
     override fun run() {
         val configFile = File(output)
@@ -104,10 +86,10 @@ class Configure: CliktCommand(help="Generate semantic object for statement") {
 
         org.apache.jena.query.ARQ.init()
 
-        val cfg = queries.map { query ->
+        val cfg = queries.associate { query ->
             val queryObj = ParameterizedSparqlString(query).asQuery()
-            ConfigGenerator.configForClass(queryObj)
-        }.toMap()
+            ConfigGenerator.configForClass(queryObj, forbiddenMagic, endpoint)
+        }
 
         val encoder = Json { prettyPrint = true }
         val json = encoder.encodeToString(cfg)
@@ -165,4 +147,4 @@ class Playground: CliktCommand(help="Execute playground environment") {
     }
 }
 
-fun main(args: Array<String>) = Inkblt().subcommands(Analyze(), Playground(), Generate(), Configure()).main(args)
+fun main(args: Array<String>) = Inkblt().subcommands(Playground(), Generate(), Configure()).main(args)

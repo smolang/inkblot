@@ -1,14 +1,21 @@
 package inkblot.codegen
 
+import inkblot.reasoning.ForbiddenMagicAnalysis
 import org.apache.jena.query.Query
 
 object ConfigGenerator {
-    fun configForClass(query: Query): Pair<String, ClassConfig> {
+    fun configForClass(query: Query, forbiddenMagic: Boolean, endpoint: String?): Pair<String, ClassConfig> {
         query.resetResultVars()
         val anchor = query.resultVars.first()
         val className = anchor.replaceFirstChar(Char::titlecase)
 
-        val properties = (query.resultVars.toSet() - anchor).associateWith { PropertyConfig(it, "Unit", "*") }
+        val properties = if(forbiddenMagic) {
+            if(endpoint == null)
+                throw Exception("Forbidden magic analysis requires SPARQL endpoint using --endpoint")
+            ForbiddenMagicAnalysis(endpoint).divine(query, anchor)
+        }
+        else (query.resultVars.toSet() - anchor).associateWith { PropertyConfig(it, "Unit", "*") }
+
         val classConfig = ClassConfig(anchor, prettifySparql(query), null, properties)
         return Pair(className, classConfig)
     }

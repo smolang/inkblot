@@ -133,6 +133,7 @@ data class VariableProperties(
     val targetName: String,
     val nullable: Boolean,
     val functional: Boolean,
-    val datatype: String,
+    val kotlinType: String,
+    val xsdType: String,
     val isObjectReference: Boolean
 )

@@ -5,36 +5,15 @@ import inkblot.runtime.Inkblot
 import org.apache.jena.query.Query
 
 class SemanticObjectGenerator(
-    private val className: String,
+    className: String,
     private val pkg: String,
-    private val query: Query,
-    private val anchor: String,
-    private val namespace: String,
-    private val variableInfo: Map<String, VariableProperties>
-) {
+    query: Query,
+    anchor: String,
+    namespace: String,
+    variableInfo: Map<String, VariableProperties>
+): AbstractSemanticObjectGenerator(className, query, anchor, namespace, variableInfo) {
 
-    private val synthesizer = QuerySynthesizer(query, anchor, variableInfo)
     private val changeNodeGenerator = ChangeNodeGenerator(synthesizer)
-
-    init {
-        val foundVars = query.resultVars.toSet().minus(anchor)
-        val specifiedVars = variableInfo.keys.toSet()
-        val unspecified = foundVars.minus(specifiedVars)
-        val overspecified = specifiedVars.minus(foundVars)
-
-        // Ensure all variables are properly specified
-        if(unspecified.isNotEmpty() && overspecified.isNotEmpty())
-            throw Exception("Configuration of '$className' is missing information about these SPARQL variables: ${unspecified.joinToString(", ")} but specifies these unused variables: ${overspecified.joinToString(", ")}")
-        else if(unspecified.isNotEmpty())
-            throw Exception("Configuration of '$className' is missing information about these SPARQL variables: ${unspecified.joinToString(", ")}")
-        else if(overspecified.isNotEmpty())
-            throw Exception("Configuration of '$className' specifies these SPARQL variables that are absent from the query: ${overspecified.joinToString(", ")}. This is most likely unintentional.")
-
-        // Ensure all data types are supported
-        val unsupportedTypes = variableInfo.values.filter { !it.isObjectReference && !Inkblot.types.supported.contains(it.datatype) }.map { it.datatype }
-        if(unsupportedTypes.isNotEmpty())
-            throw Exception("Configuration of '$className' uses these unsupported data types: ${unsupportedTypes.joinToString(", ")}")
-    }
 
     private fun indent(content: String, l: Int): String {
         val lines = content.lines()
@@ -44,13 +23,11 @@ class SemanticObjectGenerator(
                 lines.first() + "\n" + lines.drop(1).joinToString("\n").prependIndent(" ".repeat(4*l))
     }
 
-    fun gen(): String {
-        return pkg() + "\n" + imports() + "\n\n" + genFactory() + "\n\n" + genObject()
-    }
+    override fun genBoilerplate() = pkg() + "\n" + imports() + "\n"
 
-    private fun genFactory() = """
+    override fun genFactory() = """
         object ${className}Factory : SemanticObjectFactory<$className>() {
-            override val query = "${prettifySparql(query)}"
+            override val query = "$stringQuery"
             override val anchor = "$anchor"
             
             ${indent(genFactoryCreate(), 3)}
@@ -176,8 +153,8 @@ class SemanticObjectGenerator(
             when {
                 props.isObjectReference && props.nullable -> "val ${props.targetName} = lines.first().getResource(\"$sparql\")?.uri"
                 props.isObjectReference -> "val ${props.targetName} = lines.first().getResource(\"$sparql\").uri"
-                props.nullable -> "val ${props.targetName} = Inkblot.types.literalToNullable${props.datatype}(lines.first().getLiteral(\"$sparql\"))"
-                else -> "val ${props.targetName} = Inkblot.types.literalTo${props.datatype}(lines.first().getLiteral(\"$sparql\"))"
+                props.nullable -> "val ${props.targetName} = ${TypeMapper.literalToType("lines.first().getLiteral(\"$sparql\")", props.kotlinType, true)}"
+                else -> "val ${props.targetName} = ${TypeMapper.literalToType("lines.first().getLiteral(\"$sparql\")", props.kotlinType)}"
             }
         }.values.joinToString("\n")
 
@@ -194,13 +171,13 @@ class SemanticObjectGenerator(
             if(props.isObjectReference)
                 "val ${props.targetName} = lines.mapNotNull { it.getResource(\"$sparql\")?.uri }.distinct()"
             else
-                "val ${props.targetName} = lines.mapNotNull { Inkblot.types.literalToNullable${props.datatype}(it.getLiteral(\"$sparql\")) }.distinct()"
+                "val ${props.targetName} = lines.mapNotNull { ${TypeMapper.literalToType("it.getLiteral(\"$sparql\")", props.kotlinType, true)} }.distinct()"
         }.values.joinToString("\n")
 
         return "\n// for higher cardinality properties, we have to collect all distinct values\n$assignments\n"
     }
 
-    private fun genObject(): String {
+    override fun genObject(): String {
         val constructorVars = variableInfo.values.joinToString(", "){ it.targetName }
         return """
             class $className internal constructor(${genInternalConstructorArgs()}) : SemanticObject(uri) {
@@ -221,9 +198,9 @@ class SemanticObjectGenerator(
     private fun genExternalConstructorArgs(): String {
         return variableInfo.map { (_, info) ->
             when {
-                info.functional && info.nullable -> "${info.targetName}: ${info.datatype}?"
-                info.functional -> "${info.targetName}: ${info.datatype}"
-                else -> "${info.targetName}: List<${info.datatype}>"
+                info.functional && info.nullable -> "${info.targetName}: ${info.kotlinType}?"
+                info.functional -> "${info.targetName}: ${info.kotlinType}"
+                else -> "${info.targetName}: List<${info.kotlinType}>"
             }
         }.joinToString(", ")
     }
@@ -236,9 +213,9 @@ class SemanticObjectGenerator(
                 info.isObjectReference && info.functional && info.nullable -> "${info.targetName}: String?"
                 info.isObjectReference && info.functional -> "${info.targetName}: String"
                 info.isObjectReference -> "${info.targetName}: List<String>"
-                info.functional && info.nullable -> "${info.targetName}: ${info.datatype}?"
-                info.functional -> "${info.targetName}: ${info.datatype}"
-                else -> "${info.targetName}: List<${info.datatype}>"
+                info.functional && info.nullable -> "${info.targetName}: ${info.kotlinType}?"
+                info.functional -> "${info.targetName}: ${info.kotlinType}"
+                else -> "${info.targetName}: List<${info.kotlinType}>"
             }
             args.add(arg)
         }
@@ -246,32 +223,11 @@ class SemanticObjectGenerator(
         return args.joinToString(", ")
     }
 
-    private fun genProperties() = variableInfo.keys.joinToString("\n\n") { genProperty(it) }
-
-    private fun genProperty(varName: String): String {
-        return if(variableInfo[varName]!!.isObjectReference)
-            genObjectProperty(varName)
-        else
-            genDataProperty(varName)
-    }
-
-    private fun genDataProperty(varName: String): String {
-        val varProps = variableInfo[varName]!!
-        return if(varProps.functional) {
-            if(varProps.nullable)
-                genSingletNullableDataProperty(varProps.targetName, varName, varProps.datatype)
-            else
-                genSingletNonNullDataProperty(varProps.targetName, varName, varProps.datatype)
-        } else {
-            genMultiDataProperty(varProps.targetName, varName, varProps.datatype)
-        }
-    }
-
-    private fun genSingletNonNullDataProperty(varName: String, sparqlName: String, datatype: String): String {
+    override fun genSingletNonNullDataProperty(targetName: String, sparqlName: String, datatype: String): String {
         return """
-            var $varName: $datatype = $varName
+            var $targetName: $datatype = $targetName
                 set(value) {
-                    ${indent(genDeleteCheck(varName), 5)}
+                    ${indent(genDeleteCheck(targetName), 5)}
 
                     val newValueNode = ResourceFactory.createTypedLiteral(value).asNode()
                     val oldValueNode = ResourceFactory.createTypedLiteral(field).asNode()
@@ -284,11 +240,11 @@ class SemanticObjectGenerator(
         """.trimIndent()
     }
 
-    private fun genSingletNullableDataProperty(varName: String, sparqlName: String, datatype: String): String {
+    override fun genSingletNullableDataProperty(targetName: String, sparqlName: String, datatype: String): String {
         return """
-            var $varName: $datatype? = $varName
+            var $targetName: $datatype? = $targetName
                 set(value) {
-                    ${indent(genDeleteCheck(varName), 5)}
+                    ${indent(genDeleteCheck(targetName), 5)}
                     
                     val oldValueNode = ResourceFactory.createTypedLiteral(field).asNode()
                     val newValueNode = ResourceFactory.createTypedLiteral(value).asNode()
@@ -314,26 +270,26 @@ class SemanticObjectGenerator(
         """.trimIndent()
     }
 
-    private fun genMultiDataProperty(varName: String, sparqlName: String, datatype: String): String {
+    override fun genMultiDataProperty(targetName: String, sparqlName: String, datatype: String): String {
         val valueNode = "ResourceFactory.createTypedLiteral(data).asNode()"
         return """
-            private val inkblt_$varName = $varName.toMutableList()
+            private val inkblt_$targetName = $targetName.toMutableList()
 
-            val $varName: List<$datatype>
-                get() = inkblt_$varName
+            val $targetName: List<$datatype>
+                get() = inkblt_$targetName
 
-            fun ${varName}_add(data: $datatype) {
-                ${indent(genDeleteCheck(varName), 4)}
-                inkblt_$varName.add(data)
+            fun ${targetName}_add(data: $datatype) {
+                ${indent(genDeleteCheck(targetName), 4)}
+                inkblt_$targetName.add(data)
                 
                 ${indent(changeNodeGenerator.addCN("uri", sparqlName, valueNode), 4)}
                 Inkblot.changelog.add(cn)
                 markDirty()
             }
 
-            fun ${varName}_remove(data: $datatype) {
-                ${indent(genDeleteCheck(varName), 4)}
-                inkblt_$varName.remove(data)
+            fun ${targetName}_remove(data: $datatype) {
+                ${indent(genDeleteCheck(targetName), 4)}
+                inkblt_$targetName.remove(data)
                 
                 ${indent(changeNodeGenerator.removeCN("uri", sparqlName, valueNode), 4)}
                 Inkblot.changelog.add(cn)
@@ -342,50 +298,38 @@ class SemanticObjectGenerator(
         """.trimIndent()
     }
 
-    private fun genObjectProperty(varName: String): String {
-        val varProps = variableInfo[varName]!!
-        return if(varProps.functional) {
-            if(varProps.nullable)
-                genSingletNullableObjectProperty(varProps.targetName, varName, varProps.datatype)
-            else
-                genSingletNonNullObjectProperty(varProps.targetName, varName, varProps.datatype)
-        } else {
-            genMultiObjectProperty(varProps.targetName, varName, varProps.datatype)
-        }
-    }
-
-    private fun genSingletNonNullObjectProperty(varName: String, sparqlName: String, datatype: String): String {
+    override fun genSingletNonNullObjectProperty(targetName: String, sparqlName: String, datatype: String): String {
         return """
-            private var _inkbltRef_$varName: String = $varName
-            var $varName: $datatype
-                get() = $datatype.loadFromURI(_inkbltRef_$varName)
+            private var _inkbltRef_$targetName: String = $targetName
+            var $targetName: $datatype
+                get() = $datatype.loadFromURI(_inkbltRef_$targetName)
             set(value) {
-                ${indent(genDeleteCheck(varName), 4)}
+                ${indent(genDeleteCheck(targetName), 4)}
 
-                ${indent(changeNodeGenerator.changeCN("uri", sparqlName, "ResourceFactory.createResource(_inkbltRef_$varName).asNode()", "ResourceFactory.createResource(value.uri).asNode()"), 4)}
+                ${indent(changeNodeGenerator.changeCN("uri", sparqlName, "ResourceFactory.createResource(_inkbltRef_$targetName).asNode()", "ResourceFactory.createResource(value.uri).asNode()"), 4)}
                 Inkblot.changelog.add(cn)
                 
-                _inkbltRef_$varName = value.uri
+                _inkbltRef_$targetName = value.uri
                 markDirty()
             }
         """.trimIndent()
     }
 
-    private fun genSingletNullableObjectProperty(varName: String, sparqlName: String, datatype: String): String {
+    override fun genSingletNullableObjectProperty(targetName: String, sparqlName: String, datatype: String): String {
         return """
-            private var _inkbltRef_$varName: String? = $varName
-            var $varName: $datatype? = null
+            private var _inkbltRef_$targetName: String? = $targetName
+            var $targetName: $datatype? = null
                 get() {
-                    return if(field == null && _inkbltRef_$varName != null)
-                        ${datatype}Factory.loadFromURI(_inkbltRef_$varName!!)
+                    return if(field == null && _inkbltRef_$targetName != null)
+                        ${datatype}Factory.loadFromURI(_inkbltRef_$targetName!!)
                     else
                         field
                 }
                 set(value) {
-                    ${indent(genDeleteCheck(varName), 5)}
+                    ${indent(genDeleteCheck(targetName), 5)}
                     field = value
 
-                    val oldValueNode = ResourceFactory.createResource(_inkbltRef_$varName).asNode()
+                    val oldValueNode = ResourceFactory.createResource(_inkbltRef_$targetName).asNode()
                     val newValueNode = ResourceFactory.createResource(value?.uri).asNode()
 
                     if(value == null) {
@@ -393,7 +337,7 @@ class SemanticObjectGenerator(
                         ${indent(changeNodeGenerator.removeCN("uri", sparqlName, "oldValueNode"), 6)}
                         Inkblot.changelog.add(cn)
                     }
-                    else if(_inkbltRef_$varName == null) {
+                    else if(_inkbltRef_$targetName == null) {
                         // Pure insertion
                         ${indent(changeNodeGenerator.addCN("uri", sparqlName, "newValueNode"), 6)}
                         Inkblot.changelog.add(cn)
@@ -404,31 +348,31 @@ class SemanticObjectGenerator(
                         Inkblot.changelog.add(cn)
                     }
                     
-                    _inkbltRef_$varName = value?.uri
+                    _inkbltRef_$targetName = value?.uri
                     markDirty()
                 }
         """.trimIndent()
     }
 
-    private fun genMultiObjectProperty(varName: String, sparqlName: String, datatype: String): String {
+    override fun genMultiObjectProperty(targetName: String, sparqlName: String, datatype: String): String {
         val valueNode = "ResourceFactory.createResource(obj.uri).asNode()"
         return """
-            private val _inkbltRef_$varName = $varName.toMutableSet()
-            val $varName: List<$datatype>
-                get() = _inkbltRef_$varName.map { ${datatype}Factory.loadFromURI(it) } // this is cached from DB so I hope it's fine?
+            private val _inkbltRef_$targetName = $targetName.toMutableSet()
+            val $targetName: List<$datatype>
+                get() = _inkbltRef_$targetName.map { ${datatype}Factory.loadFromURI(it) } // this is cached from DB so I hope it's fine?
 
-            fun ${varName}_add(obj: $datatype) {
-                ${indent(genDeleteCheck(varName), 4)}
-                _inkbltRef_$varName.add(obj.uri)
+            fun ${targetName}_add(obj: $datatype) {
+                ${indent(genDeleteCheck(targetName), 4)}
+                _inkbltRef_$targetName.add(obj.uri)
 
                 ${indent(changeNodeGenerator.addCN("uri", sparqlName, valueNode), 4)}
                 Inkblot.changelog.add(cn)
                 markDirty()
             }
 
-            fun ${varName}_remove(obj: $datatype) {
-                ${indent(genDeleteCheck(varName), 4)}
-                _inkbltRef_$varName.remove(obj.uri)
+            fun ${targetName}_remove(obj: $datatype) {
+                ${indent(genDeleteCheck(targetName), 4)}
+                _inkbltRef_$targetName.remove(obj.uri)
 
                 ${indent(changeNodeGenerator.removeCN("uri", sparqlName, valueNode), 4)}
                 Inkblot.changelog.add(cn)

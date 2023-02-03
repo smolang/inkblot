@@ -1,3 +1,5 @@
+//import bikes.AppSpaceBike
+//import bikes.Bike
 import bikes.AppSpaceBike
 import bikes.Bike
 import com.github.ajalt.clikt.core.CliktCommand
@@ -10,6 +12,7 @@ import com.github.ajalt.clikt.parameters.options.option
 import inkblot.codegen.ClassConfig
 import inkblot.codegen.ConfigGenerator
 import inkblot.codegen.SemanticObjectGenerator
+import inkblot.codegen.TypeMapper
 import inkblot.reasoning.VariableProperties
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
@@ -51,14 +54,15 @@ class Generate: CliktCommand(help="Generate library classes from a configuration
 
         val jsonCfg = File(config)
         val cfg: Map<String, ClassConfig> = Json.decodeFromString(jsonCfg.readText())
-        val classNames = cfg.keys.toSet()
+        cfg.forEach { (className, classConfig) -> TypeMapper.registerClassType(classConfig.type, className) }
 
         cfg.forEach { (className, classConfig) ->
             val variableInfo = classConfig.properties.map { (propName, propConfig) ->
                 val nullable = propConfig.multiplicity == "?"
                 val functional = propConfig.multiplicity != "*"
-                val objectReference = classNames.contains(propConfig.datatype)
-                Pair(propConfig.sparql ?: propName, VariableProperties(propName, nullable, functional, propConfig.datatype, objectReference))
+                val objectReference = TypeMapper.isObjectType(propConfig.datatype)
+                val props = VariableProperties(propName, nullable, functional, TypeMapper.xsdToKotlinType(propConfig.datatype), propConfig.datatype, objectReference)
+                Pair(propConfig.sparql ?: propName, props)
             }.toMap()
 
             val classNamespace = classConfig.namespace ?: namespace

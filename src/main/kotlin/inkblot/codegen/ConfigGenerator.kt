@@ -16,7 +16,7 @@ object ConfigGenerator {
         }
         else (query.resultVars.toSet() - anchor).associateWith { PropertyConfig(it, "Unit", "*") }
 
-        val classConfig = ClassConfig(anchor, prettifySparql(query), null, properties)
+        val classConfig = ClassConfig(anchor, "http://example.com/ns/class", prettifySparql(query), null, properties)
         return Pair(className, classConfig)
     }
 }

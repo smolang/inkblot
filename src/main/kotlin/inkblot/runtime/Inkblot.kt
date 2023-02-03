@@ -8,7 +8,6 @@ import java.util.WeakHashMap
 
 object Inkblot {
     private val idgen: FreshUriGenerator = TinyUIDGen
-    val types = TypeHelper
 
     const val endpoint = "http://localhost:3030/bikes"
     val loadedObjects = WeakHashMap<String, SemanticObject>()

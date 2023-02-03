@@ -130,6 +130,7 @@ class VariablePathAnalysis(query: Query, val anchor: String) {
 }
 
 data class VariableProperties(
+    val sparqlName: String,
     val targetName: String,
     val nullable: Boolean,
     val functional: Boolean,

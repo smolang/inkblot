@@ -1,7 +1,6 @@
 package inkblot.codegen
 
 import inkblot.reasoning.VariableProperties
-import inkblot.runtime.Inkblot
 import org.apache.jena.query.Query
 
 class SemanticObjectGenerator(
@@ -57,7 +56,8 @@ class SemanticObjectGenerator(
         }
 
         val safeInitDataBindings = variableInfo.filterValues { it.functional && !it.nullable && !it.isObjectReference }.map { (sparql, info) ->
-            "template.setParam(\"$sparql\", ResourceFactory.createTypedLiteral(${info.targetName}))"
+            val literal = TypeMapper.valueToLiteral(info.targetName, info.xsdType)
+            "template.setParam(\"$sparql\", $literal)"
         }
 
         return """
@@ -88,7 +88,7 @@ class SemanticObjectGenerator(
             val targetBinding = if(props.isObjectReference)
                 "partialUpdate.setIri(\"v\", ${props.targetName}.uri)"
             else
-                "partialUpdate.setParam(\"v\", ResourceFactory.createTypedLiteral(${props.targetName}))"
+                "partialUpdate.setParam(\"v\", ${TypeMapper.valueToLiteral(props.targetName, props.xsdType)})"
 
             """
                 if(${props.targetName} != null) {
@@ -113,7 +113,7 @@ class SemanticObjectGenerator(
             val targetBinding = if(props.isObjectReference)
                     "partialUpdate.setIri(\"$sparql\", it.uri)"
                 else
-                    "partialUpdate.setParam(\"$sparql\", ResourceFactory.createTypedLiteral(it))"
+                    "partialUpdate.setParam(\"$sparql\", ${TypeMapper.valueToLiteral("it", props.xsdType)})"
 
             """
                 ${props.targetName}.forEach {
@@ -223,14 +223,18 @@ class SemanticObjectGenerator(
         return args.joinToString(", ")
     }
 
-    override fun genSingletNonNullDataProperty(targetName: String, sparqlName: String, datatype: String): String {
+    override fun genSingletNonNullDataProperty(properties: VariableProperties): String {
+        val targetName = properties.targetName
+        val datatype = properties.kotlinType
+        val xsdType = properties.xsdType
+        val sparqlName = properties.sparqlName
         return """
             var $targetName: $datatype = $targetName
                 set(value) {
                     ${indent(genDeleteCheck(targetName), 5)}
 
-                    val newValueNode = ResourceFactory.createTypedLiteral(value).asNode()
-                    val oldValueNode = ResourceFactory.createTypedLiteral(field).asNode()
+                    val newValueNode = ${TypeMapper.valueToLiteral("value", xsdType)}.asNode()
+                    val oldValueNode = ${TypeMapper.valueToLiteral("field", xsdType)}.asNode()
                     ${indent(changeNodeGenerator.changeCN("uri", sparqlName, "oldValueNode", "newValueNode"), 5) }
                     Inkblot.changelog.add(cn)
                     
@@ -240,14 +244,18 @@ class SemanticObjectGenerator(
         """.trimIndent()
     }
 
-    override fun genSingletNullableDataProperty(targetName: String, sparqlName: String, datatype: String): String {
+    override fun genSingletNullableDataProperty(properties: VariableProperties): String {
+        val targetName = properties.targetName
+        val datatype = properties.kotlinType
+        val xsdType = properties.xsdType
+        val sparqlName = properties.sparqlName
         return """
             var $targetName: $datatype? = $targetName
                 set(value) {
                     ${indent(genDeleteCheck(targetName), 5)}
                     
-                    val oldValueNode = ResourceFactory.createTypedLiteral(field).asNode()
-                    val newValueNode = ResourceFactory.createTypedLiteral(value).asNode()
+                    val oldValueNode = ${TypeMapper.valueToLiteral("field", xsdType)}.asNode()
+                    val newValueNode = ${TypeMapper.valueToLiteral("value", xsdType)}.asNode()
                     if(value == null) {
                         // Unset value
                         ${indent(changeNodeGenerator.removeCN("uri", sparqlName, "oldValueNode"), 6)}
@@ -270,8 +278,12 @@ class SemanticObjectGenerator(
         """.trimIndent()
     }
 
-    override fun genMultiDataProperty(targetName: String, sparqlName: String, datatype: String): String {
-        val valueNode = "ResourceFactory.createTypedLiteral(data).asNode()"
+    override fun genMultiDataProperty(properties: VariableProperties): String {
+        val targetName = properties.targetName
+        val datatype = properties.kotlinType
+        val xsdType = properties.xsdType
+        val sparqlName = properties.sparqlName
+        val valueNode = "${TypeMapper.valueToLiteral("data", xsdType)}.asNode()"
         return """
             private val inkblt_$targetName = $targetName.toMutableList()
 
@@ -298,7 +310,10 @@ class SemanticObjectGenerator(
         """.trimIndent()
     }
 
-    override fun genSingletNonNullObjectProperty(targetName: String, sparqlName: String, datatype: String): String {
+    override fun genSingletNonNullObjectProperty(properties: VariableProperties): String {
+        val targetName = properties.targetName
+        val datatype = properties.kotlinType
+        val sparqlName = properties.sparqlName
         return """
             private var _inkbltRef_$targetName: String = $targetName
             var $targetName: $datatype
@@ -306,7 +321,7 @@ class SemanticObjectGenerator(
             set(value) {
                 ${indent(genDeleteCheck(targetName), 4)}
 
-                ${indent(changeNodeGenerator.changeCN("uri", sparqlName, "ResourceFactory.createResource(_inkbltRef_$targetName).asNode()", "ResourceFactory.createResource(value.uri).asNode()"), 4)}
+                ${indent(changeNodeGenerator.changeCN("uri", sparqlName, "ResourceFactory.createResource(\"_inkbltRef_$targetName\").asNode()", "ResourceFactory.createResource(value.uri).asNode()"), 4)}
                 Inkblot.changelog.add(cn)
                 
                 _inkbltRef_$targetName = value.uri
@@ -315,7 +330,10 @@ class SemanticObjectGenerator(
         """.trimIndent()
     }
 
-    override fun genSingletNullableObjectProperty(targetName: String, sparqlName: String, datatype: String): String {
+    override fun genSingletNullableObjectProperty(properties: VariableProperties): String {
+        val targetName = properties.targetName
+        val datatype = properties.kotlinType
+        val sparqlName = properties.sparqlName
         return """
             private var _inkbltRef_$targetName: String? = $targetName
             var $targetName: $datatype? = null
@@ -354,7 +372,10 @@ class SemanticObjectGenerator(
         """.trimIndent()
     }
 
-    override fun genMultiObjectProperty(targetName: String, sparqlName: String, datatype: String): String {
+    override fun genMultiObjectProperty(properties: VariableProperties): String {
+        val targetName = properties.targetName
+        val datatype = properties.kotlinType
+        val sparqlName = properties.sparqlName
         val valueNode = "ResourceFactory.createResource(obj.uri).asNode()"
         return """
             private val _inkbltRef_$targetName = $targetName.toMutableSet()
@@ -392,6 +413,8 @@ class SemanticObjectGenerator(
             import org.apache.jena.query.ParameterizedSparqlString
             import org.apache.jena.query.QuerySolution
             import org.apache.jena.rdf.model.ResourceFactory
+            import java.math.BigDecimal
+            import java.math.BigInteger
         """.trimIndent()
     }
 

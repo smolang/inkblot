@@ -49,11 +49,11 @@ abstract class AbstractSemanticObjectGenerator(
         val varProps = variableInfo[varName]!!
         return if(varProps.functional) {
             if(varProps.nullable)
-                genSingletNullableDataProperty(varProps.targetName, varName, varProps.kotlinType)
+                genSingletNullableDataProperty(varProps)
             else
-                genSingletNonNullDataProperty(varProps.targetName, varName, varProps.kotlinType)
+                genSingletNonNullDataProperty(varProps)
         } else {
-            genMultiDataProperty(varProps.targetName, varName, varProps.kotlinType)
+            genMultiDataProperty(varProps)
         }
     }
 
@@ -61,19 +61,19 @@ abstract class AbstractSemanticObjectGenerator(
         val varProps = variableInfo[varName]!!
         return if(varProps.functional) {
             if(varProps.nullable)
-                genSingletNullableObjectProperty(varProps.targetName, varName, varProps.kotlinType)
+                genSingletNullableObjectProperty(varProps)
             else
-                genSingletNonNullObjectProperty(varProps.targetName, varName, varProps.kotlinType)
+                genSingletNonNullObjectProperty(varProps)
         } else {
-            genMultiObjectProperty(varProps.targetName, varName, varProps.kotlinType)
+            genMultiObjectProperty(varProps)
         }
     }
 
-    protected abstract fun genSingletNullableObjectProperty(targetName: String, sparqlName: String, datatype: String): String
-    protected abstract fun genSingletNonNullObjectProperty(targetName: String, sparqlName: String, datatype: String): String
-    protected abstract fun genMultiObjectProperty(targetName: String, sparqlName: String, datatype: String): String
+    protected abstract fun genSingletNullableObjectProperty(properties: VariableProperties): String
+    protected abstract fun genSingletNonNullObjectProperty(properties: VariableProperties): String
+    protected abstract fun genMultiObjectProperty(properties: VariableProperties): String
 
-    protected abstract fun genSingletNullableDataProperty(targetName: String, sparqlName: String, datatype: String): String
-    protected abstract fun genSingletNonNullDataProperty(targetName: String, sparqlName: String, datatype: String): String
-    protected abstract fun genMultiDataProperty(targetName: String, sparqlName: String, datatype: String): String
+    protected abstract fun genSingletNullableDataProperty(properties: VariableProperties): String
+    protected abstract fun genSingletNonNullDataProperty(properties: VariableProperties): String
+    protected abstract fun genMultiDataProperty(properties: VariableProperties): String
 }

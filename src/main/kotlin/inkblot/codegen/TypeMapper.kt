@@ -24,6 +24,8 @@ object TypeMapper {
             "unsignedInt" -> "UInt"
             "unsignedShort" -> "UShort"
             "unsignedByte" -> "UByte"
+            "integer" -> "BigInteger"
+            "rational" -> "BigDecimal"
             else -> {
                 if(objectTypes.containsKey(xsd))
                     objectTypes[xsd]!!
@@ -49,7 +51,17 @@ object TypeMapper {
             "UInt" -> "$litExpr<?>long<?>toUInt()"
             "UShort" -> "$litExpr<?>int<?>toUShort()"
             "UByte" -> "$litExpr<?>short<?>toUByte()"
+            "BigInteger" -> "BigInteger($litExpr.string)"
+            "BigDecimal" -> "BigDecimal($litExpr.string)"
             else -> "$litExpr<?>string"
         }.replace("<?>", if(nullable) "?." else ".")
+    }
+
+    fun valueToLiteral(valueExpr: String, xsd: String): String {
+        return when(xsd.removePrefix("xsd:").removePrefix("http://www.w3.org/2001/XMLSchema#")) {
+            "string", "boolean", "long", "int", "short", "byte", "float", "double", "integer", "rational" -> "ResourceFactory.createTypedLiteral($valueExpr)"
+            "unsignedLong", "unsignedInt", "unsignedShort", "unsignedByte" -> "ResourceFactory.createTypedLiteral($valueExpr.toString(), \"$xsd\")"
+            else -> "ResourceFactory.createTypedLiteral($valueExpr.toString(), \"$xsd\")"
+        }
     }
 }

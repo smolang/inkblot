@@ -1,5 +1,3 @@
-//import bikes.AppSpaceBike
-//import bikes.Bike
 import bikes.AppSpaceBike
 import bikes.Bike
 import com.github.ajalt.clikt.core.CliktCommand
@@ -61,8 +59,9 @@ class Generate: CliktCommand(help="Generate library classes from a configuration
                 val nullable = propConfig.multiplicity == "?"
                 val functional = propConfig.multiplicity != "*"
                 val objectReference = TypeMapper.isObjectType(propConfig.datatype)
-                val props = VariableProperties(propName, nullable, functional, TypeMapper.xsdToKotlinType(propConfig.datatype), propConfig.datatype, objectReference)
-                Pair(propConfig.sparql ?: propName, props)
+                val sparql = propConfig.sparql ?: propName
+                val props = VariableProperties(sparql, propName, nullable, functional, TypeMapper.xsdToKotlinType(propConfig.datatype), propConfig.datatype, objectReference)
+                Pair(props.sparqlName, props)
             }.toMap()
 
             val classNamespace = classConfig.namespace ?: namespace

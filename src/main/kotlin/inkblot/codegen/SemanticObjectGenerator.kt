@@ -24,19 +24,32 @@ class SemanticObjectGenerator(
 
     override fun genBoilerplate() = pkg() + "\n" + imports() + "\n"
 
-    override fun genFactory() = """
+    override fun genFactory(): String {
+        return """
         object ${className}Factory : SemanticObjectFactory<$className>() {
-            override val query = "$stringQuery"
             override val anchor = "$anchor"
+            override val query = ParameterizedSparqlString("$stringQuery")
+            ${indent(genInitializerQueries(), 3)}
             
             ${indent(genFactoryCreate(), 3)}
             
             ${indent(genFactoryInstantiate(), 3)}
         }
         """.trimIndent()
+    }
+
+    private fun genInitializerQueries(): String {
+        val synthesizedCreateQuery = synthesizer.baseCreationUpdate()
+        val base = "private val baseCreationUpdate = ParameterizedSparqlString(\"$synthesizedCreateQuery\")"
+        val vars = variableInfo.filter { (_, info) -> info.nullable || !info.functional }.map { it.value.sparqlName }
+
+        val lines = vars.map { "private val initUpdate_$it = ParameterizedSparqlString(\"${synthesizer.initializerUpdate(it)}\")" }
+
+        return (lines + base).joinToString("\n")
+    }
 
     private fun genFactoryCreate() : String {
-        val synthesizedCreateQuery = synthesizer.baseCreationUpdate()
+
         val constructorVars = variableInfo.values.map { props ->
             if(props.isObjectReference) {
                 when {
@@ -65,7 +78,7 @@ class SemanticObjectGenerator(
                 val uri = "$namespace$anchor" + Inkblot.freshSuffixFor("$anchor")
 
                 // set non-null parameters and create object
-                val template = ParameterizedSparqlString("$synthesizedCreateQuery")
+                val template = baseCreationUpdate.copy()
                 template.setIri("anchor", uri)
                 ${indent((safeInitObjRefBindings + safeInitDataBindings).joinToString("\n"), 4)}
                 
@@ -92,7 +105,7 @@ class SemanticObjectGenerator(
 
             """
                 if(${props.targetName} != null) {
-                    val partialUpdate = ParameterizedSparqlString("${synthesizer.initializerUpdate(sparql)}")
+                    val partialUpdate = initUpdate_$sparql.copy()
                     partialUpdate.setIri("anchor", uri)
                     $targetBinding
                     partialUpdate.asUpdate().forEach { update.add(it) }
@@ -117,7 +130,7 @@ class SemanticObjectGenerator(
 
             """
                 ${props.targetName}.forEach {
-                    val partialUpdate = ParameterizedSparqlString("${synthesizer.initializerUpdate(sparql)}")
+                    val partialUpdate = initUpdate_$sparql.copy()
                     partialUpdate.setIri("$anchor", uri)
                     $targetBinding
                     partialUpdate.asUpdate().forEach { part -> update.add(part) }
@@ -183,8 +196,8 @@ class SemanticObjectGenerator(
             class $className internal constructor(${genInternalConstructorArgs()}) : SemanticObject(uri) {
                 companion object {
                     fun create(${genExternalConstructorArgs()}) = ${className}Factory.create($constructorVars)
-                    fun loadAll() = ${className}Factory.loadAll()
-                    fun loadSelected(filter: String) = ${className}Factory.loadSelected(filter)
+                    fun loadAll(commitBefore: Boolean) = ${className}Factory.loadAll(commitBefore)
+                    fun commitAndLoadSelected(filter: String) = ${className}Factory.commitAndLoadSelected(filter)
                     fun loadFromURI(uri: String) = ${className}Factory.loadFromURI(uri)
                 }
                 

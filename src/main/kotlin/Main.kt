@@ -104,7 +104,7 @@ class Playground: CliktCommand(help="Execute playground environment") {
     override fun run() {
         org.apache.jena.query.ARQ.init()
 
-        val bikes = Bike.loadAll()
+        val bikes = Bike.loadAll(false)
 
         println("Loading bikes from data store")
 
@@ -131,7 +131,7 @@ class Playground: CliktCommand(help="Execute playground environment") {
         Inkblot.commit()*/
 
         println("Unicycles:")
-        val unicycles = Bike.loadSelected("!bound(?bw)")
+        val unicycles = Bike.commitAndLoadSelected("!bound(?bw)")
         unicycles.forEach {
             println(it.uri)
         }

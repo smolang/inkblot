@@ -1,26 +1,23 @@
 package inkblot.runtime
 
 import org.apache.jena.query.*
-import org.apache.jena.rdf.model.ResourceFactory
 import org.apache.jena.sparql.exec.http.QueryExecutionHTTP
-import org.apache.jena.sparql.exec.http.QueryExecutionHTTPBuilder
 import org.apache.jena.sparql.syntax.ElementFilter
 import org.apache.jena.sparql.syntax.ElementGroup
 import org.apache.jena.sparql.util.ExprUtils
 
 abstract class SemanticObjectFactory<Obj> {
     protected abstract val anchor: String
-    protected abstract val query: String
+    protected abstract val query: ParameterizedSparqlString
 
     fun loadFromURI(uri: String): Obj {
         if(Inkblot.loadedObjects.containsKey(uri))
             return Inkblot.loadedObjects[uri] as Obj
 
-        val builder = QueryExecutionHTTPBuilder.create()
-        builder.endpoint(Inkblot.endpoint)
-        builder.query(query)
-        builder.substitution(anchor, ResourceFactory.createResource(uri).asNode())
-        val res = builder.select()
+        val template = query.copy()
+        template.setIri(anchor, uri)
+        val execCtx = QueryExecutionHTTP.service(Inkblot.endpoint, template.asQuery())
+        val res = execCtx.execSelect()
 
         val list = res.asSequence().toList()
         res.close()
@@ -31,22 +28,35 @@ abstract class SemanticObjectFactory<Obj> {
         return instantiateSingleResult(list)!!
     }
 
-    fun loadAll(): List<Obj> {
-        val query = QueryExecutionHTTP.service(Inkblot.endpoint, query)
+    // Load all only returns objects that already exist in the datastore
+    // to ensure all objects are loaded, commit to data store before
+    fun loadAll(commitBefore: Boolean = false): List<Obj> {
+        if(commitBefore)
+            Inkblot.commit()
+        val query = QueryExecutionHTTP.service(Inkblot.endpoint, query.asQuery())
         return instantiateFromResultSet(query.execSelect())
     }
 
-    fun loadSelected(filterStr: String): List<Obj> {
-        val selectQuery = ParameterizedSparqlString(query).asQuery()
+    // loadSelected is weird because the filter operates on the data store
+    // if we allow using this while not synchronized to data store, we'll get inconsistencies
+    // (e.g. results for x == 0 including objects already in memory where x has been changed to 1)
+    fun commitAndLoadSelected(filterStr: String): List<Obj> {
+        Inkblot.commit()
+        val selectQuery = query.copy().asQuery() // copy just to be sure
         val filtered = addFilterToSelect(selectQuery, filterStr)
         val execCtx = QueryExecutionHTTP.service(Inkblot.endpoint, filtered)
         return instantiateFromResultSet(execCtx.execSelect())
     }
 
+    // regardless of the load operation, objects already loaded into memory should be re-used
     private fun instantiateFromResultSet(res: ResultSet): List<Obj> {
-        val entities = res.asSequence().groupBy { it.getResource(anchor).uri }
+        val grouped = res.asSequence().groupBy { it.getResource(anchor).uri }
         res.close()
-        return entities.values.map { instantiateSingleResult(it)!! } // entity groups are never empty here, non-null assert is fine
+        val uris = grouped.keys
+        val created = grouped.filter { !Inkblot.loadedObjects.containsKey(it.key) }.values.map { instantiateSingleResult(it)!! }  // entity groups are never empty here, non-null assert is fine
+        val previouslyLoaded = uris.filter { Inkblot.loadedObjects.containsKey(it) }.map { Inkblot.loadedObjects[it]!! as Obj }
+
+        return previouslyLoaded + created
     }
 
     protected abstract fun instantiateSingleResult(lines: List<QuerySolution>): Obj?

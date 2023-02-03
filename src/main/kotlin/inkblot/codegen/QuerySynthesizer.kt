@@ -82,8 +82,20 @@ class QuerySynthesizer(query: Query, val anchor: String, private val variableInf
             val closingBrackets = "]".repeat(path.size-1)
             "?anchor " + path.joinToString(" [") { "<${it.dependency.p}>" } + " ${lastNodeVar ?: ("<" + path.last().dependency.o + ">")}$closingBrackets."
         }
-        else
-            throw Exception("Backwards edges not yet supported in SPARQL synthesis")
+        else {
+            val anchor = if(path.first().backward) path.first().dependency.o else path.first().dependency.s
+            val last = if(path.last().backward) path.last().dependency.s else path.last().dependency.o
+
+            val varMapping = path.flatMap { listOf(it.dependency.s, it.dependency.o) }.distinct().associateWith { freshVar() }.toMutableMap()
+            varMapping[anchor] = "?anchor"
+            varMapping[last] = lastNodeVar ?: "<$last>"
+
+            return path.map {
+                val s = varMapping[it.dependency.s]!!
+                val o = varMapping[it.dependency.o]!!
+                "$s <${it.dependency.p}> $o."
+            }.joinToString(" ")
+        }
     }
 
     private fun freshVar(): String {

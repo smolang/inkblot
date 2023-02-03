@@ -203,7 +203,7 @@ class SemanticObjectGenerator(
                 
                 ${indent(genProperties(), 4)}
                 
-                // TODO: Merge
+                ${indent(genMerge(), 4)}
             }
         """.trimIndent()
     }
@@ -298,14 +298,14 @@ class SemanticObjectGenerator(
         val sparqlName = properties.sparqlName
         val valueNode = "${TypeMapper.valueToLiteral("data", xsdType)}.asNode()"
         return """
-            private val inkblt_$targetName = $targetName.toMutableList()
+            private val _inkblt_$targetName = $targetName.toMutableList()
 
             val $targetName: List<$datatype>
-                get() = inkblt_$targetName
+                get() = _inkblt_$targetName
 
             fun ${targetName}_add(data: $datatype) {
                 ${indent(genDeleteCheck(targetName), 4)}
-                inkblt_$targetName.add(data)
+                _inkblt_$targetName.add(data)
                 
                 ${indent(changeNodeGenerator.addCN("uri", sparqlName, valueNode), 4)}
                 Inkblot.changelog.add(cn)
@@ -314,7 +314,7 @@ class SemanticObjectGenerator(
 
             fun ${targetName}_remove(data: $datatype) {
                 ${indent(genDeleteCheck(targetName), 4)}
-                inkblt_$targetName.remove(data)
+                _inkblt_$targetName.remove(data)
                 
                 ${indent(changeNodeGenerator.removeCN("uri", sparqlName, valueNode), 4)}
                 Inkblot.changelog.add(cn)
@@ -410,6 +410,45 @@ class SemanticObjectGenerator(
 
                 ${indent(changeNodeGenerator.removeCN("uri", sparqlName, valueNode), 4)}
                 Inkblot.changelog.add(cn)
+                markDirty()
+            }
+        """.trimIndent()
+    }
+
+    private fun genMerge(): String {
+
+
+        val overwriteNonNull = variableInfo.values.filter { !it.nullable && it.functional }.map {
+            if(it.isObjectReference)
+                "_inkbltRef_${it.targetName} = other._inkbltRef_${it.targetName} // avoids triggering lazy loading"
+            else
+                "${it.targetName} = other.${it.targetName}"
+        }
+
+        val overwriteNullable = variableInfo.values.filter { it.nullable && it.functional }.map {
+            if(it.isObjectReference)
+                "if(other._inkbltRef_${it.targetName} != null) ${it.targetName} = other.${it.targetName}"
+            else
+                "${it.targetName} = other.${it.targetName} ?: ${it.targetName}"
+        }
+
+        val addNonFunctional = variableInfo.values.filter { !it.functional }.map {
+            if(it.isObjectReference)
+                "_inkbltRef_${it.targetName}.addAll(other._inkbltRef_${it.targetName})"
+            else
+                "_inkblt_${it.targetName}.addAll(other._inkblt_${it.targetName})"
+        }
+
+        val lines = (overwriteNonNull + overwriteNullable + addNonFunctional).joinToString("\n")
+
+        return """
+            fun merge(other: $className) {
+                if(deleted || other.deleted)
+                    throw Exception("Trying to merge into/out of deleted objects <${'$'}uri> / <${'$'}{other.uri}>")
+                
+                ${indent(lines, 4)}
+                
+                other.delete(uri)
                 markDirty()
             }
         """.trimIndent()

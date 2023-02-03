@@ -11,12 +11,12 @@ class ForbiddenMagicAnalysis(private val endpoint: String) {
     private val functionalProperties = getFunctionalProperties()
     private val inverseFunctionalProperties = getFunctionalProperties(true)
 
-    fun divine(query: Query, anchor: String): Map<String, PropertyConfig> {
+    fun divine(query: Query, anchor: String): Pair<String?, Map<String, PropertyConfig>> {
         if(!query.isSelectType)
             throw Exception("Query should be a SELECT")
         query.resetResultVars()
 
-        val vars = query.resultVars.toSet() - anchor
+        val vars = query.resultVars.toSet()
         val nonNullable = mutableSetOf<String>()
         val functional = mutableSetOf<String>()
 
@@ -55,33 +55,41 @@ class ForbiddenMagicAnalysis(private val endpoint: String) {
         val predicateDomains = queryExecutionHelper(domainQuery.asQuery()).groupBy { it.getResource("rel").uri }.mapValues { (_, v) -> v.map{ it.getResource("dom").uri }.toSet() }
         val predicateRanges = queryExecutionHelper(rangeQuery.asQuery()).groupBy { it.getResource("rel").uri }.mapValues { (_, v) -> v.map{ it.getResource("range").uri }.toSet() }
 
+        val divinedTypes = mutableListOf<Pair<String,String>>()
+
         vars.forEach { v ->
             println("Type analysis for ?$v")
 
             if(visitor.variableInRangesOf.containsKey(v)) {
                 val ranges = visitor.variableInRangesOf[v]!!
                 val types = ranges.flatMap { predicateRanges[it] ?: emptySet() }.distinct()
-                println("Variable is constrained by ranges of predicates: ${ranges.joinToString(", ")}")
-                println("These predicates correspond to these types: ${types.joinToString(", ")}")
+                types.filter { it != "http://www.w3.org/2002/07/owl#Thing" }.forEach { divinedTypes.add(Pair(v, it)) }
             }
 
             if(visitor.variableInDomainsOf.containsKey(v)) {
                 val domains = visitor.variableInDomainsOf[v]!!
                 val types = domains.flatMap { predicateDomains[it] ?: emptySet() }.distinct()
-                println("Variable is constrained by domains of predicates: ${visitor.variableInDomainsOf[v]!!.joinToString(", ")}")
-                println("These predicates correspond to these types: ${types.joinToString(", ")}")
+                types.filter { it != "http://www.w3.org/2002/07/owl#Thing" }.forEach { divinedTypes.add(Pair(v, it)) }
             }
             println()
         }
 
-        return vars.associateWith {
+        val divinedTypeMap = divinedTypes.groupBy { it.first }.mapValues { (_, types) -> types.map { it.second } }
+
+        val divinedClassType = if(divinedTypeMap.containsKey(anchor) && divinedTypeMap[anchor]!!.size == 1) divinedTypeMap[anchor]!!.first() else null
+
+        val properties = (vars - anchor).associateWith {
             val divinedMultiplicity = when {
                 functional.contains(it) && nonNullable.contains(it) -> "!"
                 functional.contains(it) -> "?"
                 else -> "*"
             }
-            PropertyConfig(it, "Unit", divinedMultiplicity)
+
+            val divinedType = if(divinedTypeMap.containsKey(it) && divinedTypeMap[it]!!.size == 1) divinedTypeMap[it]!!.first() else "Unit"
+            PropertyConfig(it, divinedType, divinedMultiplicity)
         }
+
+        return Pair(divinedClassType, properties)
     }
 
     private fun pathMultiplicity(path: List<VarDepEdge>): Pair<Double, Double> {

@@ -58,8 +58,6 @@ class ForbiddenMagicAnalysis(private val endpoint: String) {
         val divinedTypes = mutableListOf<Pair<String,String>>()
 
         vars.forEach { v ->
-            println("Type analysis for ?$v")
-
             if(visitor.variableInRangesOf.containsKey(v)) {
                 val ranges = visitor.variableInRangesOf[v]!!
                 val types = ranges.flatMap { predicateRanges[it] ?: emptySet() }.distinct()
@@ -71,7 +69,6 @@ class ForbiddenMagicAnalysis(private val endpoint: String) {
                 val types = domains.flatMap { predicateDomains[it] ?: emptySet() }.distinct()
                 types.filter { it != "http://www.w3.org/2002/07/owl#Thing" }.forEach { divinedTypes.add(Pair(v, it)) }
             }
-            println()
         }
 
         val divinedTypeMap = divinedTypes.groupBy { it.first }.mapValues { (_, types) -> types.map { it.second } }

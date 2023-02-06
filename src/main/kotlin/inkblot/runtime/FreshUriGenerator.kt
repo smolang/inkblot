@@ -29,9 +29,6 @@ object TinyUIDGen : FreshUriGenerator {
         val timeslug = encoder.encodeToString(bytes).trimEnd('=')
         val random = encoder.encodeToString(rand.nextBytes(5)).trimEnd('=')
 
-        val uid = ("-$timeslug-$random").lowercase()
-        println(uid)
-
-        return uid
+        return ("-$timeslug-$random").lowercase()
     }
 }

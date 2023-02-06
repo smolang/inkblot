@@ -7,10 +7,8 @@ import com.github.ajalt.clikt.parameters.arguments.multiple
 import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.option
-import inkblot.codegen.ClassConfig
-import inkblot.codegen.ConfigGenerator
-import inkblot.codegen.SemanticObjectGenerator
-import inkblot.codegen.TypeMapper
+import inkblot.codegen.*
+import inkblot.reasoning.VariablePathAnalysis
 import inkblot.reasoning.VariableProperties
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
@@ -70,6 +68,11 @@ class Generate: CliktCommand(help="Generate library classes from a configuration
 
             val destination = File(path.toFile(), "$className.kt")
             destination.writeText(generator.gen())
+
+            // SHACL constraints
+            val shacl = ShaclGenerator.genClassShape(classConfig.type, className, variableInfo, VariablePathAnalysis(query, classConfig.anchor))
+            println("SHACL for $className:")
+            println(shacl)
         }
     }
 }

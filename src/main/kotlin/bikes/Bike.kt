@@ -4,47 +4,53 @@ import inkblot.runtime.*
 import org.apache.jena.query.ParameterizedSparqlString
 import org.apache.jena.query.QuerySolution
 import org.apache.jena.rdf.model.ResourceFactory
+import java.math.BigDecimal
+import java.math.BigInteger
 
 object BikeFactory : SemanticObjectFactory<Bike>() {
-    override val query = "PREFIX  bk:   <http://rec0de.net/ns/bike#>  SELECT  ?bike ?mfg ?fw ?bw ?bells WHERE   { ?bike  a              bk:bike ;            bk:hasFrame    _:b0 .     _:b0   bk:frontWheel  ?fw     OPTIONAL       { ?bike  bk:hasFrame   _:b1 .         _:b1   bk:backWheel  ?bw       }     OPTIONAL       { ?bike  bk:mfgDate  ?mfg }     OPTIONAL       { ?bike  bk:hasFrame  _:b2 .         _:b2   bk:hasBell   ?bells       }   } "
     override val anchor = "bike"
+    override val query = ParameterizedSparqlString("PREFIX bk: <http://rec0de.net/ns/bike#> SELECT ?bike ?mfg ?fw ?bw ?bells WHERE { ?bike a bk:bike; bk:hasFrame _:b0. _:b0 bk:frontWheel ?fw OPTIONAL { ?bike bk:hasFrame _:b1. _:b1 bk:backWheel ?bw } OPTIONAL { ?bike bk:mfgDate ?mfg } OPTIONAL { ?bike bk:hasFrame _:b2. _:b2 bk:hasBell ?bells } }")
+    private val initUpdate_bw = ParameterizedSparqlString("INSERT DATA { ?anchor <http://rec0de.net/ns/bike#hasFrame> [<http://rec0de.net/ns/bike#backWheel> ?v]. }")
+    private val initUpdate_bells = ParameterizedSparqlString("INSERT DATA { ?anchor <http://rec0de.net/ns/bike#hasFrame> [<http://rec0de.net/ns/bike#hasBell> ?v]. }")
+    private val initUpdate_mfg = ParameterizedSparqlString("INSERT DATA { ?anchor <http://rec0de.net/ns/bike#mfgDate> ?v. }")
+    private val baseCreationUpdate = ParameterizedSparqlString("INSERT DATA { ?anchor <http://rec0de.net/ns/bike#hasFrame> [<http://rec0de.net/ns/bike#frontWheel> ?fw]. ?anchor <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://rec0de.net/ns/bike#bike>. }")
     
-    fun create(fw: Wheel, bw: Wheel?, bells: List<Bell>, mfg: Int?): Bike {
-        val uri = "http://rec0de.net/ns/bike#bike" + Inkblot.freshSuffixFor("bike")
+    fun create(frontWheel: Wheel, backWheel: Wheel?, bells: List<Bell>, mfgYear: Int?): Bike {
+        val uri = "http://rec0de.net/ns/inkblot#bike" + Inkblot.freshSuffixFor("bike")
     
         // set non-null parameters and create object
-        val template = ParameterizedSparqlString("INSERT DATA { ?anchor <http://rec0de.net/ns/bike#hasFrame> [<http://rec0de.net/ns/bike#frontWheel> ?fw]. ?anchor <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://rec0de.net/ns/bike#bike>. }")
+        val template = baseCreationUpdate.copy()
         template.setIri("anchor", uri)
-        template.setIri("fw", fw.uri)
+        template.setIri("fw", frontWheel.uri)
     
         val update = template.asUpdate()
     
         // initialize nullable functional properties
-        if(bw != null) {
-            val partialUpdate = ParameterizedSparqlString("INSERT DATA { ?anchor <http://rec0de.net/ns/bike#hasFrame> [<http://rec0de.net/ns/bike#backWheel> ?v]. }")
+        if(backWheel != null) {
+            val partialUpdate = initUpdate_bw.copy()
             partialUpdate.setIri("anchor", uri)
-            partialUpdate.setIri("v", bw.uri)
+            partialUpdate.setIri("v", backWheel.uri)
             partialUpdate.asUpdate().forEach { update.add(it) }
         }
     
-        if(mfg != null) {
-            val partialUpdate = ParameterizedSparqlString("INSERT DATA { ?anchor <http://rec0de.net/ns/bike#mfgDate> ?v. }")
+        if(mfgYear != null) {
+            val partialUpdate = initUpdate_mfg.copy()
             partialUpdate.setIri("anchor", uri)
-            partialUpdate.setParam("v", ResourceFactory.createTypedLiteral(mfg))
+            partialUpdate.setParam("v", ResourceFactory.createTypedLiteral(mfgYear))
             partialUpdate.asUpdate().forEach { update.add(it) }
         }
     
     
         // initialize non-functional properties
         bells.forEach {
-            val partialUpdate = ParameterizedSparqlString("INSERT DATA { ?anchor <http://rec0de.net/ns/bike#hasFrame> [<http://rec0de.net/ns/bike#hasBell> ?v]. }")
+            val partialUpdate = initUpdate_bells.copy()
             partialUpdate.setIri("bike", uri)
             partialUpdate.setIri("bells", it.uri)
             partialUpdate.asUpdate().forEach { part -> update.add(part) }
         }
     
         Inkblot.changelog.add(CreateNode(update))
-        return Bike(uri, fw.uri, bw?.uri, bells.map{ it.uri }, mfg)
+        return Bike(uri, frontWheel.uri, backWheel?.uri, bells.map{ it.uri }, mfgYear)
     }
     
     override fun instantiateSingleResult(lines: List<QuerySolution>): Bike? {
@@ -54,27 +60,26 @@ object BikeFactory : SemanticObjectFactory<Bike>() {
         val uri = lines.first().getResource("bike").uri
     
         // for functional properties we can read the first only, as all others have to be the same
-        val fw = lines.first().getResource("fw").uri
-        val bw = lines.first().getResource("bw")?.uri
-        val mfg = Inkblot.types.literalToNullableInt(lines.first().getLiteral("mfg"))
+        val frontWheel = lines.first().getResource("fw").uri
+        val backWheel = lines.first().getResource("bw")?.uri
+        val mfgYear = lines.first().getLiteral("mfg")?.int
     
     
         // for higher cardinality properties, we have to collect all distinct values
         val bells = lines.mapNotNull { it.getResource("bells")?.uri }.distinct()
     
-        return Bike(uri, fw, bw, bells, mfg) 
+        return Bike(uri, frontWheel, backWheel, bells, mfgYear) 
     }
 }
-
-class Bike internal constructor(uri: String, fw: String, bw: String?, bells: List<String>, mfg: Int?) : SemanticObject(uri) {
+class Bike internal constructor(uri: String, frontWheel: String, backWheel: String?, bells: List<String>, mfgYear: Int?) : SemanticObject(uri) {
     companion object {
-        fun create(fw: Wheel, bw: Wheel?, bells: List<Bell>, mfg: Int?) = BikeFactory.create(fw, bw, bells, mfg)
-        fun loadAll() = BikeFactory.loadAll()
-        fun loadSelected(filter: String) = BikeFactory.loadSelected(filter)
+        fun create(frontWheel: Wheel, backWheel: Wheel?, bells: List<Bell>, mfgYear: Int?) = BikeFactory.create(frontWheel, backWheel, bells, mfgYear)
+        fun loadAll(commitBefore: Boolean) = BikeFactory.loadAll(commitBefore)
+        fun commitAndLoadSelected(filter: String) = BikeFactory.commitAndLoadSelected(filter)
         fun loadFromURI(uri: String) = BikeFactory.loadFromURI(uri)
     }
     
-    private var _inkbltRef_frontWheel: String = fw
+    private var _inkbltRef_frontWheel: String = frontWheel
     var frontWheel: Wheel
         get() = Wheel.loadFromURI(_inkbltRef_frontWheel)
     set(value) {
@@ -92,7 +97,7 @@ class Bike internal constructor(uri: String, fw: String, bw: String?, bells: Lis
         markDirty()
     }
     
-    private var _inkbltRef_backWheel: String? = bw
+    private var _inkbltRef_backWheel: String? = backWheel
     var backWheel: Wheel? = null
         get() {
             return if(field == null && _inkbltRef_backWheel != null)
@@ -168,7 +173,7 @@ class Bike internal constructor(uri: String, fw: String, bw: String?, bells: Lis
         markDirty()
     }
     
-    var mfgYear: Int? = mfg
+    var mfgYear: Int? = mfgYear
         set(value) {
             if(deleted)
                 throw Exception("Trying to set property 'mfgYear' on deleted object <$uri>")
@@ -195,5 +200,16 @@ class Bike internal constructor(uri: String, fw: String, bw: String?, bells: Lis
             markDirty()
         }
     
-    // TODO: Merge
+    fun merge(other: Bike) {
+        if(deleted || other.deleted)
+            throw Exception("Trying to merge into/out of deleted objects <$uri> / <${other.uri}>")
+    
+        _inkbltRef_frontWheel = other._inkbltRef_frontWheel // avoids triggering lazy loading
+        if(other._inkbltRef_backWheel != null) backWheel = other.backWheel
+        mfgYear = other.mfgYear ?: mfgYear
+        _inkbltRef_bells.addAll(other._inkbltRef_bells)
+    
+        other.delete(uri)
+        markDirty()
+    }
 }

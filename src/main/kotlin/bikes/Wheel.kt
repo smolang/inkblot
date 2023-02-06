@@ -4,40 +4,45 @@ import inkblot.runtime.*
 import org.apache.jena.query.ParameterizedSparqlString
 import org.apache.jena.query.QuerySolution
 import org.apache.jena.rdf.model.ResourceFactory
+import java.math.BigDecimal
+import java.math.BigInteger
 
 object WheelFactory : SemanticObjectFactory<Wheel>() {
-    override val query = "PREFIX  bk:   <http://rec0de.net/ns/bike#>  SELECT  ?wheel ?dia ?mfgD ?mfgN WHERE   { ?wheel  a            bk:wheel ;             bk:diameter  ?dia     OPTIONAL       { ?wheel  bk:mfgDate  ?mfgD }     OPTIONAL       { ?wheel  bk:mfgName  ?mfgN }   } "
     override val anchor = "wheel"
+    override val query = ParameterizedSparqlString("PREFIX bk: <http://rec0de.net/ns/bike#> SELECT ?wheel ?dia ?mfgD ?mfgN WHERE { ?wheel a bk:wheel; bk:diameter ?dia OPTIONAL { ?wheel bk:mfgDate ?mfgD } OPTIONAL { ?wheel bk:mfgName ?mfgN } }")
+    private val initUpdate_mfgD = ParameterizedSparqlString("INSERT DATA { ?anchor <http://rec0de.net/ns/bike#mfgDate> ?v. }")
+    private val initUpdate_mfgN = ParameterizedSparqlString("INSERT DATA { ?anchor <http://rec0de.net/ns/bike#mfgName> ?v. }")
+    private val baseCreationUpdate = ParameterizedSparqlString("INSERT DATA { ?anchor <http://rec0de.net/ns/bike#diameter> ?dia. ?anchor <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://rec0de.net/ns/bike#wheel>. }")
     
-    fun create(dia: Double, mfgD: Int?, mfgN: List<String>): Wheel {
-        val uri = "http://rec0de.net/ns/bike#wheel" + Inkblot.freshSuffixFor("wheel")
+    fun create(diameter: Double, mfgYear: Int?, mfgNames: List<String>): Wheel {
+        val uri = "http://rec0de.net/ns/wheels#wheel" + Inkblot.freshSuffixFor("wheel")
     
         // set non-null parameters and create object
-        val template = ParameterizedSparqlString("INSERT DATA { ?anchor <http://rec0de.net/ns/bike#diameter> ?dia. ?anchor <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://rec0de.net/ns/bike#wheel>. }")
+        val template = baseCreationUpdate.copy()
         template.setIri("anchor", uri)
-        template.setParam("dia", ResourceFactory.createTypedLiteral(dia))
+        template.setParam("dia", ResourceFactory.createTypedLiteral(diameter))
     
         val update = template.asUpdate()
     
         // initialize nullable functional properties
-        if(mfgD != null) {
-            val partialUpdate = ParameterizedSparqlString("INSERT DATA { ?anchor <http://rec0de.net/ns/bike#mfgDate> ?v. }")
+        if(mfgYear != null) {
+            val partialUpdate = initUpdate_mfgD.copy()
             partialUpdate.setIri("anchor", uri)
-            partialUpdate.setParam("v", ResourceFactory.createTypedLiteral(mfgD))
+            partialUpdate.setParam("v", ResourceFactory.createTypedLiteral(mfgYear))
             partialUpdate.asUpdate().forEach { update.add(it) }
         }
     
     
         // initialize non-functional properties
-        mfgN.forEach {
-            val partialUpdate = ParameterizedSparqlString("INSERT DATA { ?anchor <http://rec0de.net/ns/bike#mfgName> ?v. }")
+        mfgNames.forEach {
+            val partialUpdate = initUpdate_mfgN.copy()
             partialUpdate.setIri("wheel", uri)
             partialUpdate.setParam("mfgN", ResourceFactory.createTypedLiteral(it))
             partialUpdate.asUpdate().forEach { part -> update.add(part) }
         }
     
         Inkblot.changelog.add(CreateNode(update))
-        return Wheel(uri, dia, mfgD, mfgN)
+        return Wheel(uri, diameter, mfgYear, mfgNames)
     }
     
     override fun instantiateSingleResult(lines: List<QuerySolution>): Wheel? {
@@ -47,26 +52,25 @@ object WheelFactory : SemanticObjectFactory<Wheel>() {
         val uri = lines.first().getResource("wheel").uri
     
         // for functional properties we can read the first only, as all others have to be the same
-        val dia = Inkblot.types.literalToDouble(lines.first().getLiteral("dia"))
-        val mfgD = Inkblot.types.literalToNullableInt(lines.first().getLiteral("mfgD"))
+        val diameter = lines.first().getLiteral("dia").double
+        val mfgYear = lines.first().getLiteral("mfgD")?.int
     
     
         // for higher cardinality properties, we have to collect all distinct values
-        val mfgN = lines.mapNotNull { Inkblot.types.literalToNullableString(it.getLiteral("mfgN")) }.distinct()
+        val mfgNames = lines.mapNotNull { it.getLiteral("mfgN")?.string }.distinct()
     
-        return Wheel(uri, dia, mfgD, mfgN) 
+        return Wheel(uri, diameter, mfgYear, mfgNames) 
     }
 }
-
-class Wheel internal constructor(uri: String, dia: Double, mfgD: Int?, mfgN: List<String>) : SemanticObject(uri) {
+class Wheel internal constructor(uri: String, diameter: Double, mfgYear: Int?, mfgNames: List<String>) : SemanticObject(uri) {
     companion object {
-        fun create(dia: Double, mfgD: Int?, mfgN: List<String>) = WheelFactory.create(dia, mfgD, mfgN)
-        fun loadAll() = WheelFactory.loadAll()
-        fun loadSelected(filter: String) = WheelFactory.loadSelected(filter)
+        fun create(diameter: Double, mfgYear: Int?, mfgNames: List<String>) = WheelFactory.create(diameter, mfgYear, mfgNames)
+        fun loadAll(commitBefore: Boolean) = WheelFactory.loadAll(commitBefore)
+        fun commitAndLoadSelected(filter: String) = WheelFactory.commitAndLoadSelected(filter)
         fun loadFromURI(uri: String) = WheelFactory.loadFromURI(uri)
     }
     
-    var diameter: Double = dia
+    var diameter: Double = diameter
         set(value) {
             if(deleted)
                 throw Exception("Trying to set property 'diameter' on deleted object <$uri>")
@@ -80,7 +84,7 @@ class Wheel internal constructor(uri: String, dia: Double, mfgD: Int?, mfgN: Lis
             markDirty()
         }
     
-    var mfgYear: Int? = mfgD
+    var mfgYear: Int? = mfgYear
         set(value) {
             if(deleted)
                 throw Exception("Trying to set property 'mfgYear' on deleted object <$uri>")
@@ -107,15 +111,15 @@ class Wheel internal constructor(uri: String, dia: Double, mfgD: Int?, mfgN: Lis
             markDirty()
         }
     
-    private val inkblt_mfgNames = mfgN.toMutableList()
+    private val _inkblt_mfgNames = mfgNames.toMutableList()
     
     val mfgNames: List<String>
-        get() = inkblt_mfgNames
+        get() = _inkblt_mfgNames
     
     fun mfgNames_add(data: String) {
         if(deleted)
             throw Exception("Trying to set property 'mfgNames' on deleted object <$uri>")
-        inkblt_mfgNames.add(data)
+        _inkblt_mfgNames.add(data)
     
         val cn = CommonPropertyAdd(uri, "http://rec0de.net/ns/bike#mfgName", ResourceFactory.createTypedLiteral(data).asNode())
         Inkblot.changelog.add(cn)
@@ -125,12 +129,22 @@ class Wheel internal constructor(uri: String, dia: Double, mfgD: Int?, mfgN: Lis
     fun mfgNames_remove(data: String) {
         if(deleted)
             throw Exception("Trying to set property 'mfgNames' on deleted object <$uri>")
-        inkblt_mfgNames.remove(data)
+        _inkblt_mfgNames.remove(data)
     
         val cn = CommonPropertyRemove(uri, "http://rec0de.net/ns/bike#mfgName", ResourceFactory.createTypedLiteral(data).asNode())
         Inkblot.changelog.add(cn)
         markDirty()
     }
     
-    // TODO: Merge
+    fun merge(other: Wheel) {
+        if(deleted || other.deleted)
+            throw Exception("Trying to merge into/out of deleted objects <$uri> / <${other.uri}>")
+    
+        diameter = other.diameter
+        mfgYear = other.mfgYear ?: mfgYear
+        _inkblt_mfgNames.addAll(other._inkblt_mfgNames)
+    
+        other.delete(uri)
+        markDirty()
+    }
 }

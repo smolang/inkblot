@@ -26,6 +26,7 @@ class Generate: CliktCommand(help="Generate library classes from a configuration
     private val config: String by argument(help="JSON file containing SPARQL queries and options")
     private val outPath: String by argument(help="location where generated files should be placed")
     private val pkg by option("-p", "--package", help="package identifier for generated files")
+    private val genDecorators by option("-d", "--decorators", help="generate empty decorators for classes").flag()
     private val namespace by option(help="default namespace to use for new entities").default("http://rec0de.net/ns/inkblot#")
 
     override fun run() {
@@ -68,6 +69,15 @@ class Generate: CliktCommand(help="Generate library classes from a configuration
 
             val destination = File(path.toFile(), "$className.kt")
             destination.writeText(generator.gen())
+            println("Generated file '$className.kt'")
+
+            // Generate decorators
+            if(genDecorators) {
+                val decorator = DecoratorGenerator(className, packageId, variableInfo).gen()
+                val decoratorFile = File(path.toFile(), "Decorated$className.kt")
+                decoratorFile.writeText(decorator)
+                println("Generated file 'Decorated$className.kt'")
+            }
 
             // SHACL constraints
             val shacl = ShaclGenerator.genClassShape(classConfig.type, className, variableInfo, VariablePathAnalysis(query, classConfig.anchor))

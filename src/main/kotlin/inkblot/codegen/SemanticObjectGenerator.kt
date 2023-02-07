@@ -14,14 +14,6 @@ class SemanticObjectGenerator(
 
     private val changeNodeGenerator = ChangeNodeGenerator(synthesizer)
 
-    private fun indent(content: String, l: Int): String {
-        val lines = content.lines()
-        return if(lines.size == 1)
-                lines.first()
-            else
-                lines.first() + "\n" + lines.drop(1).joinToString("\n").prependIndent(" ".repeat(4*l))
-    }
-
     override fun genBoilerplate() = pkg() + "\n" + imports() + "\n"
 
     override fun genFactory(): String {
@@ -471,4 +463,12 @@ class SemanticObjectGenerator(
     }
 
     private fun pkg() = "package $pkg\n"
+}
+
+fun indent(content: String, l: Int): String {
+    val lines = content.lines()
+    return if(lines.size == 1)
+        lines.first()
+    else
+        lines.first() + "\n" + lines.drop(1).joinToString("\n").prependIndent(" ".repeat(4*l))
 }

@@ -26,6 +26,10 @@ object TypeMapper {
             "unsignedByte" -> "UByte"
             "integer" -> "BigInteger"
             "rational" -> "BigDecimal"
+            "nonPositiveInteger" -> "BigInteger"
+            "negativeInteger" -> "BigInteger"
+            "nonNegativeInteger" -> "BigInteger"
+            "positiveInteger" -> "BigInteger"
             "inkblot:rawObjectReference" -> "String"
             else -> {
                 if(objectTypes.containsKey(xsd))
@@ -61,7 +65,14 @@ object TypeMapper {
     fun valueToLiteral(valueExpr: String, xsd: String): String {
         return when(xsd.removePrefix("xsd:").removePrefix("http://www.w3.org/2001/XMLSchema#")) {
             "string", "boolean", "long", "int", "short", "byte", "float", "double", "integer", "rational" -> "ResourceFactory.createTypedLiteral($valueExpr)"
-            "unsignedLong", "unsignedInt", "unsignedShort", "unsignedByte" -> "ResourceFactory.createTypedLiteral($valueExpr.toString(), \"$xsd\")"
+            "unsignedLong" -> "ResourceFactory.createTypedLiteral($valueExpr, XSDDatatype.XSDunsignedLong)"
+            "unsignedInt" -> "ResourceFactory.createTypedLiteral($valueExpr, XSDDatatype.XSDunsignedInt)"
+            "unsignedShort" -> "ResourceFactory.createTypedLiteral($valueExpr, XSDDatatype.XSDunsignedShort)"
+            "unsignedByte" -> "ResourceFactory.createTypedLiteral($valueExpr.toString(), XSDDatatype.XSDunsignedByte)"
+            "nonPositiveInteger" -> "ResourceFactory.createTypedLiteral($valueExpr.toString(), XSDDatatype.XSDnonPositiveInteger)"
+            "negativeInteger" -> "ResourceFactory.createTypedLiteral($valueExpr.toString(), XSDDatatype.XSDnegativeInteger)"
+            "nonNegativeInteger" -> "ResourceFactory.createTypedLiteral($valueExpr.toString(), XSDDatatype.XSDnonNegativeInteger)"
+            "positiveInteger" -> "ResourceFactory.createTypedLiteral($valueExpr.toString(), XSDDatatype.XSDpositiveInteger)"
             "inkblot:rawObjectReference" -> "ResourceFactory.createResource($valueExpr)"
             else -> "ResourceFactory.createTypedLiteral($valueExpr.toString(), \"$xsd\")"
         }

@@ -8,7 +8,7 @@ class DecoratorGenerator(
     private val variableInfo: Map<String, VariableProperties>
 ) {
 
-    fun gen() = pkg() + "\n" + genDecorator()
+    fun gen() = pkg() + "\n" + imports() + "\n" + genDecorator()
 
     private fun genDecorator(): String {
         val varName = className.replaceFirstChar(Char::lowercase)
@@ -47,4 +47,13 @@ class DecoratorGenerator(
     }
 
     private fun pkg() = "package $pkg\n"
+
+    private fun imports(): String {
+        val imports = mutableListOf<String>()
+        if(variableInfo.values.any { it.kotlinType == "BigInteger"})
+            imports.add("import java.math.BigInteger")
+        if(variableInfo.values.any { it.kotlinType == "BigDecimal"})
+            imports.add("import java.math.BigDecimal")
+        return imports.joinToString("\n")
+    }
 }

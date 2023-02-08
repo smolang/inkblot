@@ -1,5 +1,6 @@
 package inkblot.reasoning
 
+import org.apache.jena.graph.Triple
 import org.apache.jena.sparql.syntax.*
 
 class DependencyPathVisitor : ElementVisitorBase() {
@@ -38,12 +39,12 @@ class DependencyPathVisitor : ElementVisitorBase() {
         print("ElementDataset")
     }
 
-    override fun visit(el: ElementExists?) {
-        print("ElementExists")
+    override fun visit(el: ElementExists) {
+        throw Exception("ElementExists should not be reachable")
     }
 
-    override fun visit(el: ElementFilter?) {
-        print("ElementFilter")
+    override fun visit(el: ElementFilter) {
+        print("Filter")
     }
 
     override fun visit(el: ElementGroup) {
@@ -53,16 +54,21 @@ class DependencyPathVisitor : ElementVisitorBase() {
         indentDepth -= 1
     }
 
-    override fun visit(el: ElementMinus?) {
+    override fun visit(el: ElementMinus) {
         print("ElementMinus")
+        throw Exception("MINUS is not supported")
     }
 
-    override fun visit(el: ElementNamedGraph?) {
-        print("ElementNamedGraph")
+    override fun visit(el: ElementNamedGraph) {
+        print("NamedGraph")
+        if(el.graphNameNode.isVariable)
+            throw Exception("Variable named graphs are not supported")
+
+        throw Exception("Named graphs are not (yet) supported")
     }
 
-    override fun visit(el: ElementNotExists?) {
-        print("ElementNotExists")
+    override fun visit(el: ElementNotExists) {
+        throw Exception("ElementNotExists should not be reachable")
     }
 
     override fun visit(el: ElementOptional) {
@@ -80,13 +86,55 @@ class DependencyPathVisitor : ElementVisitorBase() {
         indentDepth += 1
         val paths = el.pattern.list
         paths.forEach {
-            print(it.toString())
-            val s = it.subject
-            val p = it.predicate
-            val o = it.`object`
+            if(!it.isTriple)
+                throw Exception("Triple path expressions are not supported ('$it')")
+            processTriple(it.asTriple())
+        }
+        indentDepth -= 1
+    }
+
+    override fun visit(el: ElementService) {
+        print("Service")
+        throw Exception("External services are not supported")
+    }
+
+    override fun visit(el: ElementSubQuery) {
+        print("SubQuery")
+        throw Exception("Sub-queries are not supported")
+    }
+
+    override fun visit(el: ElementTriplesBlock) {
+        print("TriplesBlock")
+        indentDepth += 1
+        val paths = el.pattern.list
+        paths.forEach {
+            processTriple(it)
+        }
+        indentDepth -= 1
+    }
+
+    // I *think* it's okay to treat these as independent optional contexts
+    // most of the time they will be rejected due to conflicting variable bindings but there might be cases that work?
+    override fun visit(el: ElementUnion) {
+        print("Union")
+        indentDepth += 1
+        el.elements.forEach {
+            optionalCtxIdCounter += 1
+            optionalCtxStack.add(optionalCtxIdCounter)
+            it.visit(this)
+            optionalCtxStack.removeLast()
+        }
+        indentDepth -= 1
+    }
+
+    private fun processTriple(triple: Triple) {
+            print(triple.toString())
+            val s = triple.subject
+            val p = triple.predicate
+            val o = triple.`object`
 
             if (p.isVariable)
-                throw Exception("Variable ?${p.name} occurs in predicate position in '$it'. I don't think that's supported yet.")
+                throw Exception("Variable ?${p.name} occurs in predicate position in '$triple'. I don't think that's supported yet.")
 
             if (o.isVariable) {
                 variableInRange(o.name, p.uri)
@@ -115,24 +163,6 @@ class DependencyPathVisitor : ElementVisitorBase() {
                     VarDependency(s.name, p.uri, o.name, optionalCtxStack.isNotEmpty())
                 )
             }
-        }
-        indentDepth -= 1
-    }
-
-    override fun visit(el: ElementService?) {
-        print("ElementService")
-    }
-
-    override fun visit(el: ElementSubQuery?) {
-        print("ElementSubQuery")
-    }
-
-    override fun visit(el: ElementTriplesBlock?) {
-        print("ElementTriplesBlock")
-    }
-
-    override fun visit(el: ElementUnion?) {
-        print("ElementUnion")
     }
 
     private fun variableInDomain(variable: String, inDomainOf: String) {

@@ -9,6 +9,8 @@ import java.util.WeakHashMap
 object Inkblot {
     private val idgen: FreshUriGenerator = TinyUIDGen
 
+    private val violationListeners = mutableSetOf<ConstraintViolationListener>()
+
     const val endpoint = "http://localhost:3030/bikes"
     val loadedObjects = WeakHashMap<String, SemanticObject>()
     val dirtySet = mutableSetOf<SemanticObject>() // we keep modified objects here in addition to the weak hashmap to ensure they aren't unloaded
@@ -37,6 +39,10 @@ object Inkblot {
         dirtySet.forEach { it.markCommitted() }
         dirtySet.clear()
     }
+
+    fun addViolationListener(listener: ConstraintViolationListener) = violationListeners.add(listener)
+    fun removeViolationListener(listener: ConstraintViolationListener) = violationListeners.remove(listener)
+    fun violation(violation: ConstraintViolation) = violationListeners.forEach { it.handleViolation(violation) }
 
     fun freshSuffixFor(context: String) = idgen.freshSuffixFor(context)
 }

@@ -246,6 +246,7 @@ class SemanticObjectGenerator(
             var $targetName: $datatype = $targetName
                 set(value) {
                     ${indent(genDeleteCheck(targetName), 5)}
+                    ${indent(genRuntimeTypeChecks(properties, "value"), 5)}
 
                     val newValueNode = ${TypeMapper.valueToLiteral("value", xsdType)}.asNode()
                     val oldValueNode = ${TypeMapper.valueToLiteral("field", xsdType)}.asNode()
@@ -277,11 +278,13 @@ class SemanticObjectGenerator(
                     }
                     else if(field == null) {
                         // Pure insertion
+                        ${indent(genRuntimeTypeChecks(properties, "value"), 6)}
                         ${indent(changeNodeGenerator.addCN("uri", sparqlName, "newValueNode"), 6)}
                         Inkblot.changelog.add(cn)
                     }
                     else {
                         // Update value
+                        ${indent(genRuntimeTypeChecks(properties, "value"), 6)}
                         ${indent(changeNodeGenerator.changeCN("uri", sparqlName, "oldValueNode", "newValueNode!!"), 6)}
                         Inkblot.changelog.add(cn)
                     }
@@ -306,6 +309,7 @@ class SemanticObjectGenerator(
 
             fun ${targetName}_add(data: $datatype) {
                 ${indent(genDeleteCheck(targetName), 4)}
+                ${indent(genRuntimeTypeChecks(properties, "data"), 4)}
                 _inkblt_$targetName.add(data)
                 
                 ${indent(changeNodeGenerator.addCN("uri", sparqlName, valueNode), 4)}
@@ -460,12 +464,23 @@ class SemanticObjectGenerator(
                 throw Exception("Trying to set property '$varName' on deleted object <${'$'}uri>")
         """.trimIndent()
 
+    private fun genRuntimeTypeChecks(variable: VariableProperties, varExp: String): String {
+        return when(variable.xsdType.removePrefix("xsd:").removePrefix("http://www.w3.org/2001/XMLSchema#")) {
+            "nonPositiveInteger" -> "if($varExp > BigInteger.ZERO) Inkblot.violation(VariableDomainViolation(this, \"${variable.targetName}\", \"${variable.xsdType}\"))"
+            "negativeInteger" -> "if($varExp >= BigInteger.ZERO) Inkblot.violation(VariableDomainViolation(this, \"${variable.targetName}\", \"${variable.xsdType}\"))"
+            "nonNegativeInteger" -> "if($varExp < BigInteger.ZERO) Inkblot.violation(VariableDomainViolation(this, \"${variable.targetName}\", \"${variable.xsdType}\"))"
+            "positiveInteger" -> "if($varExp <= BigInteger.ZERO) Inkblot.violation(VariableDomainViolation(this, \"${variable.targetName}\", \"${variable.xsdType}\"))"
+            else -> ""
+        }
+    }
+
     private fun imports(): String {
         return """
             import inkblot.runtime.*
             import org.apache.jena.query.ParameterizedSparqlString
             import org.apache.jena.query.QuerySolution
             import org.apache.jena.rdf.model.ResourceFactory
+            import org.apache.jena.datatypes.xsd.XSDDatatype
             import java.math.BigDecimal
             import java.math.BigInteger
         """.trimIndent()

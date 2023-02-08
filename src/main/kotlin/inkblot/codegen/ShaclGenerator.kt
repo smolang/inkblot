@@ -18,9 +18,10 @@ object ShaclGenerator {
     }
 
     private fun genPropertyShape(className: String, v: VariableProperties, paths: List<List<VarDepEdge>>): String {
-        val spec = if(v.isObjectReference) {
+        val spec = if(v.xsdType == "inkblot:rawObjectReference")
+            mutableListOf("sh:nodeKind sh:IRI")
+        else if(v.isObjectReference)
             mutableListOf("sh:nodeKind sh:IRI", "sh:class <${v.xsdType}>")
-        }
         else {
             val expanded = v.xsdType.replace("xsd:", "http://www.w3.org/2001/XMLSchema#")
             mutableListOf("sh:datatype <$expanded>")

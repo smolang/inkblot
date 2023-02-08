@@ -1,5 +1,5 @@
-import bikes.AppSpaceBike
 import bikes.Bike
+import bikes.DecoratedBike
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.core.subcommands
 import com.github.ajalt.clikt.parameters.arguments.argument
@@ -25,7 +25,9 @@ class Inkblt : CliktCommand() {
 class Generate: CliktCommand(help="Generate library classes from a configuration file") {
     private val config: String by argument(help="JSON file containing SPARQL queries and options")
     private val outPath: String by argument(help="location where generated files should be placed")
-    private val pkg by option("-p", "--package", help="package identifier for generated files")
+    private val backend by option("--backend", help="code generation backend to use - defaults to kotlin and only supports kotlin").default("kotlin")
+    private val options by option("--options", help="backend-specific options").default("")
+    private val pkgOpt by option("-p", "--package", help="package identifier to use for generated files")
     private val genDecorators by option("-d", "--decorators", help="generate empty decorators for classes").flag()
     private val namespace by option(help="default namespace to use for new entities").default("http://rec0de.net/ns/inkblot#")
 
@@ -37,17 +39,14 @@ class Generate: CliktCommand(help="Generate library classes from a configuration
         if(!path.exists())
             throw Exception("Output location '$path' does not exist")
 
-        val packageId = if(pkg != null)
-                pkg!!
-            // we might be able to guess the correct package name based on the output location
-            else if(path.contains(Path("kotlin"))) {
-                println("Generating to source directory")
-                val parts = path.toList().map { it.toString() }
-                val kotlinIdx = parts.lastIndexOf("kotlin")
-                parts.subList(kotlinIdx+1, parts.size).joinToString(".")
-            }
-            else
-                "gen"
+        val backendOptions = options.split(",").toMutableList()
+
+        // lifting backend options into neat top-level options with help/documentation
+        // because are we ever _really_ adding another backend?
+        if(genDecorators)
+            backendOptions.add("decorators")
+        if(pkgOpt != null)
+            backendOptions.add("pkg=$pkgOpt")
 
         val jsonCfg = File(config)
         val cfg: Map<String, ClassConfig> = Json.decodeFromString(jsonCfg.readText())
@@ -57,26 +56,21 @@ class Generate: CliktCommand(help="Generate library classes from a configuration
             val variableInfo = classConfig.properties.map { (propName, propConfig) ->
                 val nullable = propConfig.multiplicity == "?"
                 val functional = propConfig.multiplicity != "*"
-                val objectReference = TypeMapper.isObjectType(propConfig.datatype)
+                val objectReference = TypeMapper.isObjectType(propConfig.type)
                 val sparql = propConfig.sparql ?: propName
-                val props = VariableProperties(sparql, propName, nullable, functional, TypeMapper.xsdToKotlinType(propConfig.datatype), propConfig.datatype, objectReference)
+                val props = VariableProperties(sparql, propName, nullable, functional, TypeMapper.xsdToKotlinType(propConfig.type), propConfig.type, objectReference)
                 Pair(props.sparqlName, props)
             }.toMap()
 
             val classNamespace = classConfig.namespace ?: namespace
             val query = ParameterizedSparqlString(classConfig.query).asQuery()
-            val generator = SemanticObjectGenerator(className, packageId, query, classConfig.anchor, classNamespace, variableInfo)
 
-            val destination = File(path.toFile(), "$className.kt")
-            destination.writeText(generator.gen())
-            println("Generated file '$className.kt'")
-
-            // Generate decorators
-            if(genDecorators) {
-                val decorator = DecoratorGenerator(className, packageId, variableInfo).gen()
-                val decoratorFile = File(path.toFile(), "Decorated$className.kt")
-                decoratorFile.writeText(decorator)
-                println("Generated file 'Decorated$className.kt'")
+            when(backend) {
+                "kotlin" -> {
+                    val generator = SemanticObjectGenerator(className, query, classConfig.anchor, classNamespace, variableInfo)
+                    generator.generateToFilesInPath(path, backendOptions)
+                }
+                else -> throw Exception("Unknown code generation backend '$backend'")
             }
 
             // SHACL constraints
@@ -117,7 +111,7 @@ class Playground: CliktCommand(help="Execute playground environment") {
     override fun run() {
         org.apache.jena.query.ARQ.init()
 
-        val bikes = Bike.loadAll(false)
+        val bikes = Bike.commitAndLoadAll()
 
         println("Loading bikes from data store")
 
@@ -134,15 +128,6 @@ class Playground: CliktCommand(help="Execute playground environment") {
             println()
         }
 
-        /*val newBike = Bike.create(Wheel.loadSelected("bound(?mfgN)").first(),null, emptyList(), 2007)
-        val newBell = Bell.create("light-leak red")
-        newBike.bells_add(newBell)*/
-
-        /*val lightleakBike = Bike.loadFromURI("http://rec0de.net/ns/bike#bike-42d4bwa-r5nrsvqs")
-        val lightleakBell = Bell.loadSelected("?color = \"light-leak red\"").first()
-        lightleakBike.bells_add(lightleakBell)
-        Inkblot.commit()*/
-
         println("Unicycles:")
         val unicycles = Bike.commitAndLoadSelected("!bound(?bw)")
         unicycles.forEach {
@@ -150,16 +135,10 @@ class Playground: CliktCommand(help="Execute playground environment") {
         }
         println()
 
-        val bikeA = AppSpaceBike(Bike.loadFromURI("http://rec0de.net/ns/bike#mountainbike"))
-        val bikeB = AppSpaceBike(Bike.loadFromURI("http://rec0de.net/ns/bike#bike3"))
+        val bikeA = DecoratedBike(Bike.loadFromURI("http://rec0de.net/ns/bike#mountainbike"))
+        val bikeB = DecoratedBike(Bike.loadFromURI("http://rec0de.net/ns/bike#bike3"))
         //bikeB.removeAllBells()
         //Inkblot.commit()
-
-        bikeA.ride("the supermarket", false)
-        println()
-        bikeB.ride("your destiny", true)
-        println()
-        bikeB.ride("the far away mountains", false)
     }
 }
 

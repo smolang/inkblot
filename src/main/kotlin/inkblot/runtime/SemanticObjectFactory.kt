@@ -30,9 +30,8 @@ abstract class SemanticObjectFactory<Obj> {
 
     // Load all only returns objects that already exist in the datastore
     // to ensure all objects are loaded, commit to data store before
-    fun loadAll(commitBefore: Boolean = false): List<Obj> {
-        if(commitBefore)
-            Inkblot.commit()
+    fun commitAndLoadAll(): List<Obj> {
+        Inkblot.commit()
         val query = QueryExecutionHTTP.service(Inkblot.endpoint, query.asQuery())
         return instantiateFromResultSet(query.execSelect())
     }

@@ -1,12 +1,23 @@
 package inkblot.codegen
 
 import inkblot.reasoning.VariableProperties
+import java.io.File
+import java.nio.file.Path
+import kotlin.io.path.Path
 
 class DecoratorGenerator(
     private val className: String,
-    private val pkg: String,
     private val variableInfo: Map<String, VariableProperties>
 ) {
+
+    private var pkg = "gen"
+
+    fun generateToFilesInPath(path: Path, pkgId: String) {
+        val destination = File(path.toFile(), "Decorated$className.kt")
+        pkg = pkgId
+        destination.writeText(gen())
+        println("Generated file 'Decorated$className.kt'")
+    }
 
     fun gen() = pkg() + "\n" + imports() + "\n" + genDecorator()
 

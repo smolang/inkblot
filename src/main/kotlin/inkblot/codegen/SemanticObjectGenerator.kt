@@ -2,10 +2,12 @@ package inkblot.codegen
 
 import inkblot.reasoning.VariableProperties
 import org.apache.jena.query.Query
+import java.io.File
+import java.nio.file.Path
+import kotlin.io.path.Path
 
 class SemanticObjectGenerator(
     className: String,
-    private val pkg: String,
     query: Query,
     anchor: String,
     namespace: String,
@@ -13,6 +15,29 @@ class SemanticObjectGenerator(
 ): AbstractSemanticObjectGenerator(className, query, anchor, namespace, variableInfo) {
 
     private val changeNodeGenerator = ChangeNodeGenerator(synthesizer)
+    private var pkg = "gen"
+
+    override fun generateToFilesInPath(path: Path, options: List<String>) {
+        val destination = File(path.toFile(), "$className.kt")
+
+        // we might be able to guess the correct package name based on the output location
+        if(options.any { it.startsWith("pkg=") })
+            pkg = options.first { it.startsWith("pkg=") }.removePrefix("pkg=")
+        else if(path.contains(Path("kotlin"))) {
+            val parts = path.toList().map { it.toString() }
+            val kotlinIdx = parts.lastIndexOf("kotlin")
+            pkg = parts.subList(kotlinIdx+1, parts.size).joinToString(".")
+            println("WARNING: no target package specified, guessing '$pkg' from target destination")
+        }
+        else
+            println("WARNING: no target package specified, using 'gen'")
+
+        destination.writeText(gen())
+        println("Generated file '$className.kt'")
+
+        if(options.contains("decorators"))
+            DecoratorGenerator(className, variableInfo).generateToFilesInPath(path, pkg)
+    }
 
     override fun genBoilerplate() = pkg() + "\n" + imports() + "\n"
 
@@ -197,7 +222,7 @@ class SemanticObjectGenerator(
             class $className internal constructor(${genInternalConstructorArgs()}) : SemanticObject(uri) {
                 companion object {
                     fun create(${genExternalConstructorArgs()}) = ${className}Factory.create($constructorVars)
-                    fun loadAll(commitBefore: Boolean) = ${className}Factory.loadAll(commitBefore)
+                    fun commitAndLoadAll() = ${className}Factory.commitAndLoadAll()
                     fun commitAndLoadSelected(filter: String) = ${className}Factory.commitAndLoadSelected(filter)
                     fun loadFromURI(uri: String) = ${className}Factory.loadFromURI(uri)
                 }

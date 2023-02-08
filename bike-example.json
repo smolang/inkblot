@@ -6,21 +6,21 @@
 		"properties": {
 			"frontWheel" : {
 				"sparql": "fw",
-				"datatype": "http://rec0de.net/ns/bike#Wheel",
+				"type": "http://rec0de.net/ns/bike#Wheel",
 				"multiplicity": "!"
 			},
 			"backWheel" : {
 				"sparql": "bw",
-				"datatype": "http://rec0de.net/ns/bike#Wheel",
+				"type": "http://rec0de.net/ns/bike#Wheel",
 				"multiplicity": "?"
 			},
 			"bells" : {
-				"datatype": "http://rec0de.net/ns/bike#Bell",
+				"type": "http://rec0de.net/ns/bike#Bell",
 				"multiplicity": "*"
 			},
 			"mfgYear" : {
 				"sparql": "mfg",
-				"datatype": "http://www.w3.org/2001/XMLSchema#int",
+				"type": "http://www.w3.org/2001/XMLSchema#int",
 				"multiplicity": "?"
 			}
 		}
@@ -33,17 +33,17 @@
 		"properties": {
 			"diameter" : {
 				"sparql": "dia",
-				"datatype": "xsd:double",
+				"type": "xsd:double",
 				"multiplicity": "!"
 			},
 			"mfgYear" : {
 				"sparql": "mfgD",
-				"datatype": "xsd:int",
+				"type": "xsd:int",
 				"multiplicity": "?"
 			},
 			"mfgNames" : {
 				"sparql": "mfgN",
-				"datatype": "http://www.w3.org/2001/XMLSchema#string",
+				"type": "http://www.w3.org/2001/XMLSchema#string",
 				"multiplicity": "*"
 			}
 		}
@@ -54,7 +54,7 @@
 		"query": "PREFIX bk: <http://rec0de.net/ns/bike#> SELECT ?bell ?color WHERE { ?bell a bk:bell; bk:color ?color }",
 		"properties": {
 			"color" : {
-				"datatype": "xsd:string",
+				"type": "xsd:string",
 				"multiplicity": "!"
 			}
 		}

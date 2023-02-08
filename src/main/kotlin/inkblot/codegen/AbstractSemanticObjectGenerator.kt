@@ -2,6 +2,8 @@ package inkblot.codegen
 
 import inkblot.reasoning.VariableProperties
 import org.apache.jena.query.Query
+import java.io.File
+import java.nio.file.Path
 
 abstract class AbstractSemanticObjectGenerator(
     protected val className: String,
@@ -27,6 +29,8 @@ abstract class AbstractSemanticObjectGenerator(
         else if(overspecified.isNotEmpty())
             throw Exception("Configuration of '$className' specifies these SPARQL variables that are absent from the query: ${overspecified.joinToString(", ")}. This is most likely unintentional.")
     }
+
+    abstract fun generateToFilesInPath(path: Path, options: List<String>)
 
     fun gen(): String {
         return genBoilerplate() + "\n" + genFactory() + "\n" + genObject()

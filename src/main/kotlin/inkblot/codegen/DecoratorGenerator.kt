@@ -13,7 +13,7 @@ class DecoratorGenerator(
     private fun genDecorator(): String {
         val varName = className.replaceFirstChar(Char::lowercase)
         return """
-            class Decorated$className(val $varName: $className) {
+            class Decorated$className(private val $varName: $className) {
                 ${indent(genPropertyLifting(varName), 4)}
             }
         """.trimIndent()

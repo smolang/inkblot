@@ -61,8 +61,13 @@ class SemanticObjectGenerator(
         }
 
         val safeInitDataBindings = variableInfo.filterValues { it.functional && !it.nullable && !it.isObjectReference }.map { (sparql, info) ->
-            val literal = TypeMapper.valueToLiteral(info.targetName, info.xsdType)
-            "template.setParam(\"$sparql\", $literal)"
+            if(info.xsdType == "inkblot:rawObjectReference") {
+                "template.setIri(\"$sparql\", ${info.targetName})"
+            }
+            else {
+                val literal = TypeMapper.valueToLiteral(info.targetName, info.xsdType)
+                "template.setParam(\"$sparql\", $literal)"
+            }
         }
 
         return """
@@ -92,6 +97,8 @@ class SemanticObjectGenerator(
         val initializers = vars.mapValues { (sparql, props) ->
             val targetBinding = if(props.isObjectReference)
                 "partialUpdate.setIri(\"v\", ${props.targetName}.uri)"
+            else if(props.xsdType == "inkblot:rawObjectReference")
+                "partialUpdate.setIri(\"v\", ${props.targetName})"
             else
                 "partialUpdate.setParam(\"v\", ${TypeMapper.valueToLiteral(props.targetName, props.xsdType)})"
 
@@ -117,6 +124,8 @@ class SemanticObjectGenerator(
         val initializers = vars.mapValues { (sparql, props) ->
             val targetBinding = if(props.isObjectReference)
                     "partialUpdate.setIri(\"$sparql\", it.uri)"
+                else if(props.xsdType == "inkblot:rawObjectReference")
+                    "partialUpdate.setIri(\"$sparql\", it)"
                 else
                     "partialUpdate.setParam(\"$sparql\", ${TypeMapper.valueToLiteral("it", props.xsdType)})"
 
@@ -156,8 +165,8 @@ class SemanticObjectGenerator(
 
         val assignments = functionalVars.mapValues { (sparql, props) ->
             when {
-                props.isObjectReference && props.nullable -> "val ${props.targetName} = lines.first().getResource(\"$sparql\")?.uri"
-                props.isObjectReference -> "val ${props.targetName} = lines.first().getResource(\"$sparql\").uri"
+                (props.isObjectReference || props.xsdType == "inkblot:rawObjectReference") && props.nullable -> "val ${props.targetName} = lines.first().getResource(\"$sparql\")?.uri"
+                (props.isObjectReference || props.xsdType == "inkblot:rawObjectReference") -> "val ${props.targetName} = lines.first().getResource(\"$sparql\").uri"
                 props.nullable -> "val ${props.targetName} = ${TypeMapper.literalToType("lines.first().getLiteral(\"$sparql\")", props.kotlinType, true)}"
                 else -> "val ${props.targetName} = ${TypeMapper.literalToType("lines.first().getLiteral(\"$sparql\")", props.kotlinType)}"
             }
@@ -173,7 +182,7 @@ class SemanticObjectGenerator(
             return ""
 
         val assignments = nonFuncVars.mapValues { (sparql, props) ->
-            if(props.isObjectReference)
+            if(props.isObjectReference || props.xsdType == "inkblot:rawObjectReference")
                 "val ${props.targetName} = lines.mapNotNull { it.getResource(\"$sparql\")?.uri }.distinct()"
             else
                 "val ${props.targetName} = lines.mapNotNull { ${TypeMapper.literalToType("it.getLiteral(\"$sparql\")", props.kotlinType, true)} }.distinct()"

@@ -26,11 +26,12 @@ object TypeMapper {
             "unsignedByte" -> "UByte"
             "integer" -> "BigInteger"
             "rational" -> "BigDecimal"
+            "inkblot:rawObjectReference" -> "String"
             else -> {
                 if(objectTypes.containsKey(xsd))
                     objectTypes[xsd]!!
                 else {
-                    println("WARNING: Rendering unsupported xsd type '$short' as String")
+                    println("WARNING: Rendering unsupported literal type '$short' as String")
                     "String"
                 }
             }
@@ -61,6 +62,7 @@ object TypeMapper {
         return when(xsd.removePrefix("xsd:").removePrefix("http://www.w3.org/2001/XMLSchema#")) {
             "string", "boolean", "long", "int", "short", "byte", "float", "double", "integer", "rational" -> "ResourceFactory.createTypedLiteral($valueExpr)"
             "unsignedLong", "unsignedInt", "unsignedShort", "unsignedByte" -> "ResourceFactory.createTypedLiteral($valueExpr.toString(), \"$xsd\")"
+            "inkblot:rawObjectReference" -> "ResourceFactory.createResource($valueExpr)"
             else -> "ResourceFactory.createTypedLiteral($valueExpr.toString(), \"$xsd\")"
         }
     }

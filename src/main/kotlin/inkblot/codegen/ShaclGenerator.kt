@@ -22,7 +22,7 @@ object ShaclGenerator {
         checkForWeirdness(className, variableInfo, paths)
 
         variableInfo.forEach {
-            shapeStatements.add(genPropertyShape(className, it, paths.pathsTo(it.sparqlName)))
+            shapeStatements.add(genPropertyShape(className, it, paths.pathsToVariable(it.sparqlName)))
         }
 
         return "<$shapeUri> ${shapeStatements.joinToString("; ")}."
@@ -44,7 +44,7 @@ object ShaclGenerator {
         }
 
         val propertyPaths = variableInfo.flatMap {
-            val p = paths.pathsTo(it.sparqlName)
+            val p = paths.pathsToVariable(it.sparqlName)
             if(p.size > 1)
                 println("WARNING: Query contains several paths to '?${it.sparqlName}', generated SHACL for '$className.${it.targetName}' might be too restrictive")
             p

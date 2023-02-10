@@ -1,5 +1,6 @@
 package inkblot.reasoning
 
+import org.apache.jena.graph.Node
 import org.apache.jena.graph.Triple
 import org.apache.jena.sparql.syntax.*
 
@@ -142,6 +143,7 @@ class DependencyPathVisitor : ElementVisitorBase() {
             if (p.isVariable)
                 throw Exception("Variable ?${p.name} occurs in predicate position in '$triple'. I don't think that's supported yet.")
 
+            // keep track of the optional contexts in which variables appear
             if (o.isVariable) {
                 variableInRange(o.name, p.uri)
                 // keeping track of in which optional contexts a variable appears to detect possibly conflicting bindings
@@ -160,13 +162,37 @@ class DependencyPathVisitor : ElementVisitorBase() {
 
             // concrete leaves that may need to be created explicitly
             if (s.isVariable && o.isConcrete) {
-                variableDependencies.add(VarDependency(s.name, p.uri, o.uri, optionalCtxStack.isNotEmpty(), graphNameStack.lastOrNull()))
-                concreteLeaves.add(o.uri)
+                if(o.isURI) {
+                    variableDependencies.add(VarDependency(s.name, s, p.uri, o.uri, o, optionalCtxStack.isNotEmpty(), graphNameStack.lastOrNull()))
+                    concreteLeaves.add(o.uri)
+                }
+                else if(o.isLiteral) {
+                    variableDependencies.add(VarDependency(s.name, s, p.uri, o.literal.toString(), o, optionalCtxStack.isNotEmpty(), graphNameStack.lastOrNull()))
+                    concreteLeaves.add(o.literal.toString())
+                }
             }
 
-            if (s.isVariable && o.isVariable && p.isConcrete) {
+            if (s.isConcrete && o.isVariable) {
+                if(s.isURI) {
+                    variableDependencies.add(VarDependency(s.uri, s, p.uri, o.name, o, optionalCtxStack.isNotEmpty(), graphNameStack.lastOrNull()))
+                    concreteLeaves.add(s.uri)
+                }
+                else if(s.isLiteral) {
+                    variableDependencies.add(VarDependency(s.literal.toString(), s, p.uri, o.name, o, optionalCtxStack.isNotEmpty(), graphNameStack.lastOrNull()))
+                    concreteLeaves.add(s.literal.toString())
+                }
+            }
+
+            // basic variable-to-variable dependencies
+            if (s.isVariable && o.isVariable) {
                 variableDependencies.add(
-                    VarDependency(s.name, p.uri, o.name, optionalCtxStack.isNotEmpty(), graphNameStack.lastOrNull())
+                    VarDependency(
+                        s.name, s,
+                        p.uri,
+                        o.name, o,
+                        optionalCtxStack.isNotEmpty(),
+                        graphNameStack.lastOrNull()
+                    )
                 )
             }
     }

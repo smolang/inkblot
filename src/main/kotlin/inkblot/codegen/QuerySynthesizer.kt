@@ -3,46 +3,35 @@ package inkblot.codegen
 import inkblot.reasoning.VarDepEdge
 import inkblot.reasoning.VariablePathAnalysis
 import inkblot.reasoning.VariableProperties
-import org.apache.jena.query.Query
 
 class QuerySynthesizer(
-    val anchor: String,
-    private val variableInfo: Map<String, VariableProperties>,
-    private val paths: VariablePathAnalysis
-) {
-    private var uniqueIDCtr = 0
-
-    fun isSimple(v: String) = paths.simpleProperties.containsKey(v)
-
-    fun simplePathUri(v: String): String {
-        if(!paths.simpleProperties.containsKey(v))
-            throw Exception("Variable ?$v is not a simple property")
-        return paths.simpleProperties[v]!!
-    }
-
-    fun baseCreationUpdate(): String {
+    anchor: String,
+    variableInfo: Map<String, VariableProperties>,
+    paths: VariablePathAnalysis
+): AbstractQuerySynthesizer(anchor, variableInfo, paths) {
+    override fun baseCreationUpdate(): String {
         val concreteLeaves = paths.concreteLeaves()
         val safeInitVars = variableInfo.filterValues{ it.functional && !it.nullable }.keys
 
         val variableInitializers = safeInitVars.map {v ->
-            paths.pathsTo(v).joinToString(" ") { pathToSparqlSelect(it, "?$v")}
+            paths.pathsToVariable(v).joinToString(" ") { pathToSparqlSelect(it, "?$v")}
         }.joinToString(" ")
 
-        val concreteInitializers = concreteLeaves.map {c ->
-            paths.pathsToConcrete(c).joinToString(" ") { pathToSparqlSelect(it, null) }
-        }.joinToString(" ")
+        val safePathsToConcrete = concreteLeaves.map{ paths.pathsToConcrete(it) }.flatten().filter { path -> path.all{ !it.dependency.optional } }
+        val concreteInitializers = safePathsToConcrete.joinToString(" "){ pathToSparqlSelect(it, null) }
 
         return "INSERT DATA { $variableInitializers $concreteInitializers }"
-
     }
 
-    fun initializerUpdate(v: String): String {
-        val insertSentences = paths.pathsTo(v).joinToString(" ") { pathToSparqlSelect(it, "?v") }
+    override fun initializerUpdate(v: String): String {
+        val insertSentences = paths.pathsToVariable(v).joinToString(" ") {
+            pathToSparqlSelect(it, "?v")
+        }
         return "INSERT DATA { $insertSentences }"
     }
 
-    fun changeUpdate(v: String): String {
-        val varPaths = paths.pathsTo(v)
+    override fun changeUpdate(v: String): String {
+        val varPaths = paths.pathsToVariable(v)
         val deleteSentences = mutableListOf<String>()
         val insertSentences = mutableListOf<String>()
         val whereSentences = mutableListOf<String>()
@@ -50,7 +39,7 @@ class QuerySynthesizer(
         varPaths.forEach { path ->
             val lastEdge = path.last()
             val lastEdgeUri = lastEdge.dependency.p
-            val lastNodeVar = if(path.size == 1) "?anchor" else freshVar()
+            val lastNodeVar = if(path.size == 1) "?anchor" else "?${lastEdge.destination}"
             deleteSentences.add(tripleInGraph(lastNodeVar, lastEdgeUri, "?o", lastEdge.backward, lastEdge.dependency.inGraph))
             insertSentences.add(tripleInGraph(lastNodeVar, lastEdgeUri, "?n", lastEdge.backward, lastEdge.dependency.inGraph))
             if(path.size > 1)
@@ -60,19 +49,19 @@ class QuerySynthesizer(
         return "DELETE { ${deleteSentences.joinToString(" ") } } INSERT { ${insertSentences.joinToString(" ")}} WHERE { ${whereSentences.joinToString(" ")} }"
     }
 
-    fun addUpdate(v: String) = verbLastEdgeWherePath("INSERT", v)
+    override fun addUpdate(v: String) = verbLastEdgeWherePath("INSERT", v)
 
-    fun removeUpdate(v: String) = verbLastEdgeWherePath("DELETE", v)
+    override fun removeUpdate(v: String) = verbLastEdgeWherePath("DELETE", v)
 
     private fun verbLastEdgeWherePath(verb: String, v: String): String {
-        val varPaths = paths.pathsTo(v)
+        val varPaths = paths.pathsToVariable(v)
         val verbSentences = mutableListOf<String>()
         val whereSentences = mutableListOf<String>()
 
         varPaths.forEach { path ->
             val lastEdge = path.last()
             val lastEdgeUri = lastEdge.dependency.p
-            val lastNodeVar = if(path.size == 1) "?anchor" else freshVar()
+            val lastNodeVar = if(path.size == 1) "?anchor" else "?${lastEdge.destination}"
             verbSentences.add(tripleInGraph(lastNodeVar, lastEdgeUri, "?o", lastEdge.backward, lastEdge.dependency.inGraph))
 
             if(path.size > 1)
@@ -86,19 +75,11 @@ class QuerySynthesizer(
         return verbSection + whereSection
     }
 
-    private fun tripleInGraph(s: String, p: String, o: String, inverse: Boolean, graph: String?): String {
-        val triple = if(inverse) "$o <$p> $s" else "$s <$p> $o."
-        return if(graph == null)
-            triple
-        else
-            "GRAPH <$graph> { $triple }"
-    }
-
     private fun pathToSparqlSelect(path: List<VarDepEdge>, lastNodeVar: String?) : String {
         // nicer rendering for easy paths (no backward edges, all in the same graph)
         return if(path.isEmpty())
             throw Exception("cannot convert empty path to sparql")
-        else if(path.all { !it.backward } && path.map{ it.dependency.inGraph }.distinct().size == 1) {
+        /*else if(path.all { !it.backward } && path.map{ it.dependency.inGraph }.distinct().size == 1) {
             // we have established that there is only one distinct graph, so we can use the first one
             val graph = path.first().dependency.inGraph
             val closingBrackets = "]".repeat(path.size-1)
@@ -108,13 +89,13 @@ class QuerySynthesizer(
                 basePath
             else
                 "GRAPH <$graph> { $basePath }"
-        }
+        }*/
         // ugly but more generic rendering
         else {
             val anchor = if(path.first().backward) path.first().dependency.o else path.first().dependency.s
             val last = if(path.last().backward) path.last().dependency.s else path.last().dependency.o
 
-            val varMapping = path.flatMap { listOf(it.dependency.s, it.dependency.o) }.distinct().associateWith { freshVar() }.toMutableMap()
+            val varMapping = path.flatMap { listOf(it.dependency.s, it.dependency.o) }.distinct().associateWith { "?$it" }.toMutableMap()
             varMapping[anchor] = "?anchor"
             varMapping[last] = lastNodeVar ?: "<$last>"
 
@@ -125,10 +106,5 @@ class QuerySynthesizer(
                 tripleInGraph(s, it.dependency.p, o, false, it.dependency.inGraph)
             }.joinToString(" ")
         }
-    }
-
-    private fun freshVar(): String {
-        uniqueIDCtr += 1
-        return "?inkblt$uniqueIDCtr"
     }
 }

@@ -47,7 +47,7 @@ class SemanticObjectGenerator(
         return """
         object ${className}Factory : SemanticObjectFactory<$className>() {
             override val anchor = "$anchor"
-            override val query = ParameterizedSparqlString("$stringQuery")
+            override val query = ParameterizedSparqlString("${escape(stringQuery)}")
             ${indent(genInitializerQueries(), 3)}
             
             ${indent(genFactoryCreate(), 3)}
@@ -59,10 +59,10 @@ class SemanticObjectGenerator(
 
     private fun genInitializerQueries(): String {
         val synthesizedCreateQuery = synthesizer.baseCreationUpdate()
-        val base = "private val baseCreationUpdate = ParameterizedSparqlString(\"$synthesizedCreateQuery\")"
+        val base = "private val baseCreationUpdate = ParameterizedSparqlString(\"${escape(synthesizedCreateQuery)}\")"
         val vars = variableInfo.filter { (_, info) -> info.nullable || !info.functional }.map { it.value.sparqlName }
 
-        val lines = vars.map { "private val initUpdate_$it = ParameterizedSparqlString(\"${synthesizer.initializerUpdate(it)}\")" }
+        val lines = vars.map { "private val initUpdate_$it = ParameterizedSparqlString(\"${escape(synthesizer.initializerUpdate(it))}\")" }
 
         return (lines + base).joinToString("\n")
     }
@@ -150,16 +150,16 @@ class SemanticObjectGenerator(
 
         val initializers = vars.mapValues { (sparql, props) ->
             val targetBinding = if(props.isObjectReference)
-                    "partialUpdate.setIri(\"$sparql\", it.uri)"
+                    "partialUpdate.setIri(\"v\", it.uri)"
                 else if(props.xsdType == "inkblot:rawObjectReference")
-                    "partialUpdate.setIri(\"$sparql\", it)"
+                    "partialUpdate.setIri(\"v\", it)"
                 else
-                    "partialUpdate.setParam(\"$sparql\", ${TypeMapper.valueToLiteral("it", props.xsdType)})"
+                    "partialUpdate.setParam(\"v\", ${TypeMapper.valueToLiteral("it", props.xsdType)})"
 
             """
                 ${props.targetName}.forEach {
                     val partialUpdate = initUpdate_$sparql.copy()
-                    partialUpdate.setIri("$anchor", uri)
+                    partialUpdate.setIri("anchor", uri)
                     $targetBinding
                     partialUpdate.asUpdate().forEach { part -> update.add(part) }
                 }
@@ -515,6 +515,8 @@ class SemanticObjectGenerator(
 
     private fun pkg() = "package $pkg\n"
 }
+
+fun escape(query: String) = query.replace("\"", "\\\"")
 
 fun indent(content: String, l: Int): String {
     val lines = content.lines()

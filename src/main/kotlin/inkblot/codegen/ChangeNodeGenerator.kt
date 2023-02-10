@@ -1,12 +1,12 @@
 package inkblot.codegen
 
-class ChangeNodeGenerator(private val synthesizer: QuerySynthesizer) {
+class ChangeNodeGenerator(private val synthesizer: AbstractQuerySynthesizer) {
     fun changeCN(anchorUriVar: String, sparqlVariable: String, oldValueExpr: String, newValueExpr: String): String {
         return if(synthesizer.isSimple(sparqlVariable))
                 "val cn = CommonPropertyChange($anchorUriVar, \"${synthesizer.simplePathUri(sparqlVariable)}\", $oldValueExpr, $newValueExpr)"
             else {
                 """
-                    val template = ParameterizedSparqlString("${synthesizer.changeUpdate(sparqlVariable)}")
+                    val template = ParameterizedSparqlString("${escape(synthesizer.changeUpdate(sparqlVariable))}")
                     template.setIri("anchor", $anchorUriVar)
                     template.setParam("o", $oldValueExpr)
                     template.setParam("n", $newValueExpr)
@@ -22,7 +22,7 @@ class ChangeNodeGenerator(private val synthesizer: QuerySynthesizer) {
             "val cn = CommonPropertyRemove($anchorUriVar, \"${synthesizer.simplePathUri(sparqlVariable)}\", $valueExpr)"
         else {
             """
-                val template = ParameterizedSparqlString("${synthesizer.removeUpdate(sparqlVariable)}")
+                val template = ParameterizedSparqlString("${escape(synthesizer.removeUpdate(sparqlVariable))}")
                 template.setIri("anchor", $anchorUriVar)
                 template.setParam("o", $valueExpr)
                 val cn = ComplexPropertyRemove(template.asUpdate())
@@ -36,7 +36,7 @@ class ChangeNodeGenerator(private val synthesizer: QuerySynthesizer) {
             "val cn = CommonPropertyAdd($anchorUriVar, \"${synthesizer.simplePathUri(sparqlVariable)}\", $valueExpr)"
         else {
             """
-                val template = ParameterizedSparqlString("${synthesizer.addUpdate(sparqlVariable)}")
+                val template = ParameterizedSparqlString("${escape(synthesizer.addUpdate(sparqlVariable))}")
                 template.setIri("anchor", $anchorUriVar)
                 template.setParam("o", $valueExpr)
                 val cn = ComplexPropertyAdd(template.asUpdate())

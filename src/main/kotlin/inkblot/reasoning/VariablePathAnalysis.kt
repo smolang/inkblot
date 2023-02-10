@@ -1,10 +1,12 @@
 package inkblot.reasoning
 
+import org.apache.jena.graph.Node
+import org.apache.jena.graph.NodeFactory
 import org.apache.jena.query.Query
 
 class VariablePathAnalysis(query: Query, val anchor: String) {
 
-    private val vars = query.resultVars.toSet()
+    val resultVars = query.resultVars.toSet()
     private val visitor = DependencyPathVisitor()
     val simpleProperties = mutableMapOf<String, String>()
     private val dependencyPaths: Map<String, List<List<VarDepEdge>>>
@@ -19,7 +21,7 @@ class VariablePathAnalysis(query: Query, val anchor: String) {
 
         checkConflictingBindings()
 
-        dependencyPaths = VariableDependencePaths.variableDependencyPaths(anchor, vars, visitor.variableDependencies)
+        dependencyPaths = VariableDependencePaths.variableDependencyPaths(anchor, resultVars, visitor.variableDependencies)
 
         analyzePaths()
 
@@ -28,7 +30,7 @@ class VariablePathAnalysis(query: Query, val anchor: String) {
 
     private fun checkConflictingBindings() {
         val optCtxStacks = visitor.variablesInOptionalContexts.groupBy { it.first }.mapValues { (_, v) -> v.map { it.second } }
-        vars.filter { !visitor.safeVariables.contains(it) }.forEach {v ->
+        resultVars.filter { !visitor.safeVariables.contains(it) }.forEach { v ->
             if(!optCtxStacks.containsKey(v))
                 throw Exception("SPARQL variable '?$v' from result set does not actually appear in query")
             val stacks = optCtxStacks[v]!!.distinct().sortedBy { it.length }.toMutableList() // non-null assertion is safe since nullable vars occur in at least one context
@@ -66,82 +68,12 @@ class VariablePathAnalysis(query: Query, val anchor: String) {
         }
     }
 
-    // we don't have a use for this right now but i thought *real hard* about it so you better believe we're going to keep it around
-    private fun distinctAnonymousVariables() {
-        val anonymousVariables = visitor.variableDependencies.flatMap { listOf(it.s, it.o) }.toSet() - vars
-        val variableEquivalenceMap = anonymousVariables.associateWith { it }.toMutableMap()
-        val anonDependencyPaths =
-            VariableDependencePaths.variableDependencyPaths(anchor, anonymousVariables, visitor.variableDependencies)
-        println("Query contains anonymous variables: ${anonymousVariables.joinToString(", ")}")
-
-        // ok let's work this out: when are two variables equivalent to each other?
-        // -> if every path to the variable has an equivalent path leading to the other one, and vice versa
-        // -> corollary: the number of paths to each variable has to be identical
-        val coreAnonVars = anonymousVariables.toMutableList()
-        var prevSize = coreAnonVars.size + 1
-        var i: Int
-        println("Variable equivalence analysis starting with ${coreAnonVars.size} distinct variables")
-
-        while (coreAnonVars.size < prevSize) {
-            prevSize = coreAnonVars.size
-            i = 0
-            while (i < coreAnonVars.size) {
-                val variable = coreAnonVars[i]
-                println("Checking equivalences for $variable")
-                val referencePaths = anonDependencyPaths[variable]!!
-                val candidates =
-                    coreAnonVars.filter { it != variable && anonDependencyPaths[it]?.size == referencePaths.size }
-                val equivalent = candidates.filter {
-                    val paths = anonDependencyPaths[it]!!
-                    paths.all { p ->
-                        referencePaths.any { q ->
-                            VariableDependencePaths.pathsEquivalentUpToTargetVar(
-                                p,
-                                q,
-                                variableEquivalenceMap
-                            )
-                        }
-                    }
-                }.toSet()
-                equivalent.forEach {
-                    println("\tFound equivalence to $it")
-                    // update all variables currently pointing to the equivalent one to the canonical one
-                    variableEquivalenceMap.filter { (_, v) -> v == it }
-                        .forEach { (k, _) -> variableEquivalenceMap[k] = variable }
-                }
-                // equivalence is symmetric, so we will always remove things AFTER the current coreAnonVars index
-                // therefore it should be safe to remove during iteration?
-                coreAnonVars.removeAll(equivalent)
-                i += 1
-            }
-        }
-
-        println("Variable equivalence analysis found ${coreAnonVars.size} distinct variables")
-        println()
-
-        coreAnonVars.forEach { v ->
-            val paths = anonDependencyPaths[v]!!
-            if (paths.isEmpty())
-                throw Exception("Unable to derive dependency path from ?$anchor to ?$v")
-
-            println("Dependency paths from $anchor to $v:")
-            paths.forEach { path -> println(path.joinToString("->")) }
-        }
-    }
-
     fun concreteLeaves(): Set<String> = visitor.concreteLeaves
+    fun safeVariables(): Set<String> = visitor.safeVariables
 
-    fun pathsTo(v: String) = dependencyPaths[v]!!
-    fun pathsToConcrete(c: String) = concreteLeafPaths[c]!!
+    fun pathsToVariable(v: String) = dependencyPaths[v] ?: throw Exception("No path to variable '$v'")
+    fun pathsToConcrete(c: String) = concreteLeafPaths[c] ?: throw Exception("No path to concrete leaf '$c'")
 
-    fun safeEdgesFrom(v: String): Set<VarDepEdge> {
-        return visitor.variableDependencies.filter { !it.optional && (it.s == v || it.o == v) }.map {
-            if(it.s == v)
-                VarDepEdge(it, false)
-            else
-                VarDepEdge(it, true)
-        }.toSet()
-    }
 }
 
 data class VariableProperties(

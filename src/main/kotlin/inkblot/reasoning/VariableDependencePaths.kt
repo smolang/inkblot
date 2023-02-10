@@ -1,21 +1,13 @@
 package inkblot.reasoning
 
+import org.apache.jena.graph.Node
+
 object VariableDependencePaths {
 
     private val visited = mutableSetOf<String>()
     private val currentPath = mutableListOf<String>()
     private val simplePaths = mutableListOf<List<String>>()
     private val adjacency = mutableMapOf<String,MutableSet<String>>()
-
-    fun pathsEquivalentUpToTargetVar(a: List<VarDepEdge>, b: List<VarDepEdge>, equivMap: Map<String, String>): Boolean {
-        if(a.size != b.size)
-            return false
-        val zipped = a.zip(b)
-        val (lastA, lastB) = zipped.last()
-        val rest = zipped.dropLast(1)
-
-        return rest.all{ it.first.equivalent(it.second, equivMap) } && lastA.equivalentUpToTarget(lastB, equivMap)
-    }
 
     fun variableDependencyPaths(anchor: String, vars: Set<String>, dependencies: Set<VarDependency>): Map<String, List<List<VarDepEdge>>> {
         initAdjacencyMatrix(dependencies)
@@ -112,28 +104,25 @@ object VariableDependencePaths {
 
 data class VarDependency(
     val s: String,
+    val sNode: Node,
     val p: String,
     val o: String,
+    val oNode: Node,
     val optional: Boolean,
     val inGraph: String?
 ) {
     override fun toString() = "($s-$p->$o)"
 
-    fun equivalent(other: VarDependency, equivMap: Map<String,String>): Boolean {
-        return p == other.p && equivMap[s] == equivMap[other.s] && equivMap[o] == equivMap[other.o]
+    // nodes should not factor into equality
+    override fun equals(other: Any?): Boolean {
+        return other is VarDependency && s == other.s && o == other.o && optional == other.optional && inGraph == other.inGraph
     }
+
 }
 
 data class VarDepEdge(val dependency: VarDependency, val backward: Boolean) {
-    fun equivalent(other: VarDepEdge, equivMap: Map<String, String>) = dependency.equivalent(other.dependency, equivMap)
+    val destination: String
+        get() = if(backward) dependency.s else dependency.o
 
-    fun equivalentUpToTarget(other: VarDepEdge, equivMap: Map<String, String>): Boolean {
-        // conservative choice, necessary?
-        return if(backward.xor(other.backward))
-            false
-        else if(backward)
-            dependency.p == other.dependency.p && equivMap[dependency.o] == equivMap[other.dependency.o]
-        else
-            dependency.p == other.dependency.p && equivMap[dependency.s] == equivMap[other.dependency.s]
-    }
+    override fun toString() = dependency.toString()
 }

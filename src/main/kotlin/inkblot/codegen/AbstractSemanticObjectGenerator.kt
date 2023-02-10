@@ -14,7 +14,7 @@ abstract class AbstractSemanticObjectGenerator(
     paths: VariablePathAnalysis
 ) {
     protected val stringQuery = prettifySparql(query)
-    protected val synthesizer = QuerySynthesizer(anchor, variableInfo, paths)
+    protected val synthesizer: AbstractQuerySynthesizer = NewQuerySynthesizer(anchor, variableInfo, paths)
 
     init {
         val foundVars = query.resultVars.toSet().minus(anchor)

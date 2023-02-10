@@ -55,10 +55,14 @@ class VariablePathAnalysis(query: Query, val anchor: String) {
             /*println("Dependency paths from $anchor to $k:")
             v.forEach { path -> println(path.joinToString("->")) }*/
 
-            // We have a simple property access if there is exactly one path and that path is of length one (anchor in direct relation to property, in forward direction, in default graph)
-            if (v.size == 1 && v.first().size == 1 && !v.first().first().backward && v.first().first().dependency.inGraph == null)
-                simpleProperties[k] =
-                    v.first().first().dependency.p // save the URI that is used to access this simple property
+            // We consider a simple property to be: 1. accessed via exactly one forward path of length one
+            if(v.size == 1 && v.first().size == 1 && !v.first().first().backward) {
+                val edge = v.first().first().dependency
+                val target = edge.o
+                // 2. it is in the default graph and 3. there are no other edges to the target (target is unconstrained)
+                if(edge.inGraph == null && visitor.variableDependencies.none { it != edge && (it.s == target || it.o == target) })
+                    simpleProperties[k] = edge.p
+            }
         }
     }
 
@@ -129,6 +133,15 @@ class VariablePathAnalysis(query: Query, val anchor: String) {
 
     fun pathsTo(v: String) = dependencyPaths[v]!!
     fun pathsToConcrete(c: String) = concreteLeafPaths[c]!!
+
+    fun safeEdgesFrom(v: String): Set<VarDepEdge> {
+        return visitor.variableDependencies.filter { !it.optional && (it.s == v || it.o == v) }.map {
+            if(it.s == v)
+                VarDepEdge(it, false)
+            else
+                VarDepEdge(it, true)
+        }.toSet()
+    }
 }
 
 data class VariableProperties(

@@ -17,7 +17,7 @@ object ConfigGenerator {
             classType = ct ?: classType
             pr
         }
-        else (query.resultVars.toSet() - anchor).associateWith { PropertyConfig(it, "Unit", "*") }
+        else (query.resultVars.toSet() - anchor).associateWith { PropertyConfig(it, "http://example.com/ns/any", "*") }
 
         val classConfig = ClassConfig(anchor, classType, prettifySparql(query), null, properties)
         return Pair(className, classConfig)

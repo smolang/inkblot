@@ -1,5 +1,3 @@
-import bikes.Bike
-import bikes.DecoratedBike
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.core.subcommands
 import com.github.ajalt.clikt.parameters.arguments.argument
@@ -110,28 +108,6 @@ class Playground: CliktCommand(help="Execute playground environment") {
     override fun run() {
         org.apache.jena.query.ARQ.init()
 
-        val bikes = Bike.commitAndLoadAll()
-        println("Loading bikes from data store")
-
-        bikes.forEach { bike ->
-            println("Bike: ${bike.uri}, ${bike.mfgYear}" )
-            println("Front Wheel: ${bike.frontWheel.uri}, ${bike.frontWheel.diameter}, ${bike.frontWheel.mfgYear}, ${bike.frontWheel.mfgNames.joinToString(", ")}")
-            if(bike.backWheel != null) {
-                val bw = bike.backWheel!!
-                println("Back Wheel: ${bw.uri}, ${bw.diameter}, ${bw.mfgYear}, ${bw.mfgNames.joinToString(", ")}")
-            }
-            bike.bells.forEach { bell ->
-                println("Bell: ${bell.color}")
-            }
-            println()
-        }
-
-        println("Unicycles:")
-        val unicycles = Bike.commitAndLoadSelected("!bound(?bw)")
-        unicycles.forEach {
-            println(it.uri)
-        }
-        println()
     }
 }
 

@@ -29,6 +29,8 @@ class VariablePathAnalysis(query: Query, val anchor: String) {
     private fun checkConflictingBindings() {
         val optCtxStacks = visitor.variablesInOptionalContexts.groupBy { it.first }.mapValues { (_, v) -> v.map { it.second } }
         vars.filter { !visitor.safeVariables.contains(it) }.forEach {v ->
+            if(!optCtxStacks.containsKey(v))
+                throw Exception("SPARQL variable '?$v' from result set does not actually appear in query")
             val stacks = optCtxStacks[v]!!.distinct().sortedBy { it.length }.toMutableList() // non-null assertion is safe since nullable vars occur in at least one context
             val distinctBindings = mutableListOf<String>()
 
@@ -53,8 +55,8 @@ class VariablePathAnalysis(query: Query, val anchor: String) {
             /*println("Dependency paths from $anchor to $k:")
             v.forEach { path -> println(path.joinToString("->")) }*/
 
-            // We have a simple property access if there is exactly one path and that path is of length one (anchor in direct relation to property, in forward direction)
-            if (v.size == 1 && v.first().size == 1 && !v.first().first().backward)
+            // We have a simple property access if there is exactly one path and that path is of length one (anchor in direct relation to property, in forward direction, in default graph)
+            if (v.size == 1 && v.first().size == 1 && !v.first().first().backward && v.first().first().dependency.inGraph == null)
                 simpleProperties[k] =
                     v.first().first().dependency.p // save the URI that is used to access this simple property
         }

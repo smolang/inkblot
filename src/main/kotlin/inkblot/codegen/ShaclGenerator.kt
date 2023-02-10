@@ -4,15 +4,24 @@ import inkblot.reasoning.VarDepEdge
 import inkblot.reasoning.VariablePathAnalysis
 import inkblot.reasoning.VariableProperties
 import inkblot.runtime.Inkblot
+import java.io.File
+import java.nio.file.Path
 
 object ShaclGenerator {
-    fun genClassShape(targetClassUri: String, className: String, variableInfo: Map<String, VariableProperties>, paths: VariablePathAnalysis): String {
+
+    fun generateToFilesInPath(path: Path, targetClassUri: String, className: String, variableInfo: Collection<VariableProperties>, paths: VariablePathAnalysis) {
+        val destination = File(path.toFile(), "$className.shacl")
+        destination.writeText(genClassShape(targetClassUri, className, variableInfo, paths))
+        println("Generated file '$className.shacl'")
+    }
+
+    fun genClassShape(targetClassUri: String, className: String, variableInfo: Collection<VariableProperties>, paths: VariablePathAnalysis): String {
         val shapeUri = "http://rec0de.net/ns/inkblot#SHACL${Inkblot.freshSuffixFor("SHACL")}"
         val shapeStatements = mutableListOf("a sh:NodeShape", "sh:targetClass <$targetClassUri>")
 
-        checkForWeirdness(className, variableInfo.values, paths)
+        checkForWeirdness(className, variableInfo, paths)
 
-        variableInfo.values.forEach {
+        variableInfo.forEach {
             shapeStatements.add(genPropertyShape(className, it, paths.pathsTo(it.sparqlName)))
         }
 
@@ -27,10 +36,12 @@ object ShaclGenerator {
         val concreteLeaves = paths.concreteLeaves().map { paths.pathsToConcrete(it) }
 
         // we expect one concrete leaf to specify the type of what we select - this is fine and can be mapped to SHACL
-        val relevantLeaves = concreteLeaves.filterNot { it.size == 1 && it.first().size == 1 && it.first().first().dependency.p == "http://www.w3.org/2000/01/rdf-schema#type" }.flatten()
+        val relevantLeaves = concreteLeaves.filterNot { it.size == 1 && it.first().size == 1 && it.first().first().dependency.p == "http://www.w3.org/1999/02/22-rdf-syntax-ns#type" }.flatten()
 
-        if(relevantLeaves.isNotEmpty())
+        if(relevantLeaves.isNotEmpty()) {
             println("WARNING: Query contains constant leaves, generated SHACL for '$className' might match instances it shouldn't")
+            relevantLeaves.forEach { println(it) }
+        }
 
         val propertyPaths = variableInfo.flatMap {
             val p = paths.pathsTo(it.sparqlName)
@@ -65,13 +76,13 @@ object ShaclGenerator {
             spec.add("sh:minCount 1")
 
         spec.add("sh:name \"${v.targetName} property of Inkblot class $className\"")
-        spec.add(genShaclPath(v.sparqlName, paths))
+        spec.add(genShaclPath(paths))
 
         return "sh:property [ ${spec.joinToString("; ")}]"
 
     }
 
-    private fun genShaclPath(v: String, paths: List<List<VarDepEdge>>): String {
+    private fun genShaclPath(paths: List<List<VarDepEdge>>): String {
         val shaclPaths = paths.map { singlePathToShacl(it) }
 
         return if(shaclPaths.size > 1)

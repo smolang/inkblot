@@ -9,6 +9,7 @@ class DependencyPathVisitor : ElementVisitorBase() {
     private var indentDepth = 0
     private var optionalCtxIdCounter = 0
     private val optionalCtxStack = mutableListOf<Int>()
+    private val graphNameStack = mutableListOf<String>()
 
     val variableDependencies = mutableSetOf<VarDependency>()
     val variablesInOptionalContexts = mutableSetOf<Pair<String, String>>()
@@ -64,7 +65,12 @@ class DependencyPathVisitor : ElementVisitorBase() {
         if(el.graphNameNode.isVariable)
             throw Exception("Variable named graphs are not supported")
 
-        throw Exception("Named graphs are not (yet) supported")
+        indentDepth += 1
+        graphNameStack.add(el.graphNameNode.uri)
+        el.element.visit(this)
+        graphNameStack.removeLast()
+        indentDepth -= 1
+        //throw Exception("Named graphs are not (yet) supported")
     }
 
     override fun visit(el: ElementNotExists) {
@@ -154,13 +160,13 @@ class DependencyPathVisitor : ElementVisitorBase() {
 
             // concrete leaves that may need to be created explicitly
             if (s.isVariable && o.isConcrete) {
-                variableDependencies.add(VarDependency(s.name, p.uri, o.uri, optionalCtxStack.isNotEmpty()))
+                variableDependencies.add(VarDependency(s.name, p.uri, o.uri, optionalCtxStack.isNotEmpty(), graphNameStack.lastOrNull()))
                 concreteLeaves.add(o.uri)
             }
 
             if (s.isVariable && o.isVariable && p.isConcrete) {
                 variableDependencies.add(
-                    VarDependency(s.name, p.uri, o.name, optionalCtxStack.isNotEmpty())
+                    VarDependency(s.name, p.uri, o.name, optionalCtxStack.isNotEmpty(), graphNameStack.lastOrNull())
                 )
             }
     }

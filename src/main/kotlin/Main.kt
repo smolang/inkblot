@@ -64,19 +64,18 @@ class Generate: CliktCommand(help="Generate library classes from a configuration
 
             val classNamespace = classConfig.namespace ?: namespace
             val query = ParameterizedSparqlString(classConfig.query).asQuery()
+            val paths = VariablePathAnalysis(query, classConfig.anchor)
 
             when(backend) {
                 "kotlin" -> {
-                    val generator = SemanticObjectGenerator(className, query, classConfig.anchor, classNamespace, variableInfo)
+                    val generator = SemanticObjectGenerator(className, query, classConfig.anchor, classNamespace, variableInfo, paths)
                     generator.generateToFilesInPath(path, backendOptions)
                 }
                 else -> throw Exception("Unknown code generation backend '$backend'")
             }
 
             // SHACL constraints
-            val shacl = ShaclGenerator.genClassShape(classConfig.type, className, variableInfo, VariablePathAnalysis(query, classConfig.anchor))
-            println("SHACL for $className:")
-            println(shacl)
+            ShaclGenerator.generateToFilesInPath(path, classConfig.type, className, variableInfo.values, paths)
         }
     }
 }
@@ -112,7 +111,6 @@ class Playground: CliktCommand(help="Execute playground environment") {
         org.apache.jena.query.ARQ.init()
 
         val bikes = Bike.commitAndLoadAll()
-
         println("Loading bikes from data store")
 
         bikes.forEach { bike ->
@@ -134,11 +132,6 @@ class Playground: CliktCommand(help="Execute playground environment") {
             println(it.uri)
         }
         println()
-
-        val bikeA = DecoratedBike(Bike.loadFromURI("http://rec0de.net/ns/bike#mountainbike"))
-        val bikeB = DecoratedBike(Bike.loadFromURI("http://rec0de.net/ns/bike#bike3"))
-        //bikeB.removeAllBells()
-        //Inkblot.commit()
     }
 }
 

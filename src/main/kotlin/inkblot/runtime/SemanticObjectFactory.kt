@@ -16,7 +16,12 @@ abstract class SemanticObjectFactory<Obj> {
 
         val template = query.copy()
         template.setIri(anchor, uri)
-        val execCtx = QueryExecutionHTTP.service(Inkblot.endpoint, template.asQuery())
+        // we have to get rid of the raw URI in the select clause
+        val queryString = template.toString().replaceFirst("<$uri>", "")
+        val q = QueryFactory.create(queryString)
+
+        println(q)
+        val execCtx = QueryExecutionHTTP.service(Inkblot.endpoint, q)
         val res = execCtx.execSelect()
 
         val list = res.asSequence().toList()

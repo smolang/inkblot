@@ -1,8 +1,8 @@
 package inkblot.codegen
 
+import inkblot.reasoning.VariablePathAnalysis
 import inkblot.reasoning.VariableProperties
 import org.apache.jena.query.Query
-import java.io.File
 import java.nio.file.Path
 
 abstract class AbstractSemanticObjectGenerator(
@@ -10,10 +10,11 @@ abstract class AbstractSemanticObjectGenerator(
     protected val query: Query,
     protected val anchor: String,
     protected val namespace: String,
-    protected val variableInfo: Map<String, VariableProperties>
+    protected val variableInfo: Map<String, VariableProperties>,
+    paths: VariablePathAnalysis
 ) {
     protected val stringQuery = prettifySparql(query)
-    protected val synthesizer = QuerySynthesizer(query, anchor, variableInfo)
+    protected val synthesizer = QuerySynthesizer(anchor, variableInfo, paths)
 
     init {
         val foundVars = query.resultVars.toSet().minus(anchor)

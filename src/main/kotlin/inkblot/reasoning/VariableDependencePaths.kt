@@ -114,7 +114,8 @@ data class VarDependency(
     val s: String,
     val p: String,
     val o: String,
-    val optional: Boolean
+    val optional: Boolean,
+    val inGraph: String?
 ) {
     override fun toString() = "($s-$p->$o)"
 

@@ -20,15 +20,7 @@ class NewQuerySynthesizer(anchor: String, vars: Map<String, VariableProperties>,
         if(unboundRequired.isNotEmpty())
             throw Exception("SPARQL variables ${unboundRequired.joinToString(", ")} are not optional but considered optional according to configured multiplicity")
 
-        val requiredVariablePaths = assignableVars.flatMap { paths.pathsToVariable(it) }.filter { path -> path.none { it.dependency.optional } }
-        val requiredConcreteLeavedPaths = paths.concreteLeaves().flatMap { paths.pathsToConcrete(it) }.filter { path -> path.none { it.dependency.optional } }
-        val requiredAnonymousVariablePaths = emptyList<List<VarDepEdge>>() // TODO
-
-        val varEdges = requiredVariablePaths.flatten().map{ it.dependency }.toSet()
-        val conEdges = requiredConcreteLeavedPaths.flatten().map{ it.dependency }.toSet()
-        val anoEdges = requiredAnonymousVariablePaths.flatten().map{ it.dependency }.toSet()
-        val requiredEdges = varEdges + conEdges + anoEdges
-
+        val requiredEdges = bindingsFor(setOf(anchor), "")
         val insertStatements = renderEdgeSet(requiredEdges, assignableVars)
 
         return "INSERT DATA { $insertStatements }"
@@ -63,41 +55,60 @@ class NewQuerySynthesizer(anchor: String, vars: Map<String, VariableProperties>,
         return "INSERT DATA { $insertStatements }"
     }
 
-    override fun changeUpdate(v: String): String {
-        val varPaths = paths.pathsToVariable(v)
+    // TODO: more accurate binding using concrete leaves as well
+    private fun genericUpdate(v: String, delete: Boolean, insert: Boolean): String {
         val deleteSentences = mutableListOf<String>()
         val insertSentences = mutableListOf<String>()
         val requiredVarBindings = mutableSetOf<String>()
         val lastEdges = mutableSetOf<VarDependency>()
 
-        varPaths.forEach { path ->
-            val lastEdge = path.last()
-            lastEdges.add(lastEdge.dependency)
-            val lastEdgeUri = lastEdge.dependency.p
-            val lastNodeVar = if(path.size == 1) "?anchor" else "?${lastEdge.source}"
+        val lastEdgesOnPaths = paths.pathsToVariable(v).map { it.last().dependency }
 
-            // if we use this variable in the delete/insert, we have to bind it in the where
-            if(path.size > 1)
-                requiredVarBindings.add(lastEdge.source)
+        val neighborhood = paths.edgesFor(v)
+        neighborhood.forEach { edge ->
+            val backwards = edge.s == v
+            val sourceNode = if(backwards) edge.oNode else edge.sNode
 
-            deleteSentences.add(tripleInGraph(lastNodeVar, lastEdgeUri, "?o", lastEdge.backward, lastEdge.dependency.inGraph))
-            insertSentences.add(tripleInGraph(lastNodeVar, lastEdgeUri, "?n", lastEdge.backward, lastEdge.dependency.inGraph))
+            val source = when {
+                sourceNode.isURI -> "<${sourceNode.uri}>"
+                sourceNode.isLiteral -> "\"${sourceNode.literal}\""
+                sourceNode.isVariable && sourceNode.name == anchor -> "?anchor"
+                sourceNode.isVariable -> {
+                    requiredVarBindings.add(sourceNode.name)
+                    "?${sourceNode.name}"
+                }
+                else -> throw Exception("Unknown Node type in $edge")
+            }
+
+            // when deleting, we only want to delete what's absolutely necessary, e.g. leaving type labels of removed nodes intact
+            if(lastEdgesOnPaths.contains(edge))
+                deleteSentences.add(tripleInGraph(source, edge.p, "?o", backwards, edge.inGraph))
+            insertSentences.add(tripleInGraph(source, edge.p, "?n", backwards, edge.inGraph))
+            lastEdges.add(edge)
         }
 
         val ctx = paths.definingContextForVariable(v)
-        val bindings = bindingsFor(requiredVarBindings, ctx).minus(lastEdges)
+        val bindings = bindingsFor(requiredVarBindings, ctx)
         val whereSentences = renderEdgeSet(bindings, requiredVarBindings)
 
-        return "DELETE { ${deleteSentences.joinToString(" ")} } INSERT { ${insertSentences.joinToString(" ")}} WHERE { $whereSentences }"
+        if(!delete && !insert)
+            throw Exception("Not inserting anything and not deleting anything is probably unintentional")
+
+        var stmt = ""
+        if(delete)
+            stmt += "DELETE { ${deleteSentences.joinToString(" ")} } "
+        if(insert)
+            stmt += "INSERT { ${insertSentences.joinToString(" ")} } "
+        stmt += "WHERE { $whereSentences }"
+
+        return stmt
     }
 
-    override fun addUpdate(v: String): String {
-        return ""
-    }
+    override fun changeUpdate(v: String) = genericUpdate(v, delete = true, insert = true)
 
-    override fun removeUpdate(v: String): String {
-        return ""
-    }
+    override fun addUpdate(v: String) = genericUpdate(v, delete = false, insert = true)
+
+    override fun removeUpdate(v: String) = genericUpdate(v, delete = true, insert = false)
 
     private fun bindingsFor(vars: Set<String>, optionalCtx: String): Set<VarDependency> {
         val toBind = vars.toMutableSet()

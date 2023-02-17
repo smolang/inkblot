@@ -27,7 +27,7 @@ abstract class AbstractQuerySynthesizer(
     abstract fun removeUpdate(v: String): String
 
     protected fun tripleInGraph(s: String, p: String, o: String, inverse: Boolean, graph: String?): String {
-        val triple = if(inverse) "$o <$p> $s" else "$s <$p> $o."
+        val triple = if(inverse) "$o <$p> $s." else "$s <$p> $o."
         return if(graph == null)
             triple
         else

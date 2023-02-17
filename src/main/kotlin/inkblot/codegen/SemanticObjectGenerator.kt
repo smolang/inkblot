@@ -366,7 +366,7 @@ class SemanticObjectGenerator(
             set(value) {
                 ${indent(genDeleteCheck(targetName), 4)}
 
-                ${indent(changeNodeGenerator.changeCN("uri", sparqlName, "ResourceFactory.createResource(\"_inkbltRef_$targetName\").asNode()", "ResourceFactory.createResource(value.uri).asNode()"), 4)}
+                ${indent(changeNodeGenerator.changeCN("uri", sparqlName, "ResourceFactory.createResource(_inkbltRef_$targetName).asNode()", "ResourceFactory.createResource(value.uri).asNode()"), 4)}
                 Inkblot.changelog.add(cn)
                 
                 _inkbltRef_$targetName = value.uri

@@ -17,6 +17,10 @@ class DependencyPathVisitor : ElementVisitorBase() {
     val concreteLeaves = mutableSetOf<String>()
     val safeVariables = mutableSetOf<String>()
 
+    private var foundFilter = false
+    val containsFilter: Boolean
+        get() = foundFilter
+
     // keeping these around for forbidden magic purposes
     val variableInRangesOf = mutableMapOf<String,MutableSet<String>>()
     val variableInDomainsOf = mutableMapOf<String,MutableSet<String>>()
@@ -47,6 +51,7 @@ class DependencyPathVisitor : ElementVisitorBase() {
 
     override fun visit(el: ElementFilter) {
         print("Filter")
+        foundFilter = true
     }
 
     override fun visit(el: ElementGroup) {
@@ -163,22 +168,22 @@ class DependencyPathVisitor : ElementVisitorBase() {
             // concrete leaves that may need to be created explicitly
             if (s.isVariable && o.isConcrete) {
                 if(o.isURI) {
-                    variableDependencies.add(VarDependency(s.name, s, p.uri, o.uri, o, optionalCtxStack.isNotEmpty(), graphNameStack.lastOrNull()))
+                    variableDependencies.add(VarDependency(s.name, s, p.uri, o.uri, o, optionalCtxStack.joinToString(","), graphNameStack.lastOrNull()))
                     concreteLeaves.add(o.uri)
                 }
                 else if(o.isLiteral) {
-                    variableDependencies.add(VarDependency(s.name, s, p.uri, o.literal.toString(), o, optionalCtxStack.isNotEmpty(), graphNameStack.lastOrNull()))
+                    variableDependencies.add(VarDependency(s.name, s, p.uri, o.literal.toString(), o, optionalCtxStack.joinToString(","), graphNameStack.lastOrNull()))
                     concreteLeaves.add(o.literal.toString())
                 }
             }
 
             if (s.isConcrete && o.isVariable) {
                 if(s.isURI) {
-                    variableDependencies.add(VarDependency(s.uri, s, p.uri, o.name, o, optionalCtxStack.isNotEmpty(), graphNameStack.lastOrNull()))
+                    variableDependencies.add(VarDependency(s.uri, s, p.uri, o.name, o, optionalCtxStack.joinToString(","), graphNameStack.lastOrNull()))
                     concreteLeaves.add(s.uri)
                 }
                 else if(s.isLiteral) {
-                    variableDependencies.add(VarDependency(s.literal.toString(), s, p.uri, o.name, o, optionalCtxStack.isNotEmpty(), graphNameStack.lastOrNull()))
+                    variableDependencies.add(VarDependency(s.literal.toString(), s, p.uri, o.name, o, optionalCtxStack.joinToString(","), graphNameStack.lastOrNull()))
                     concreteLeaves.add(s.literal.toString())
                 }
             }
@@ -190,7 +195,7 @@ class DependencyPathVisitor : ElementVisitorBase() {
                         s.name, s,
                         p.uri,
                         o.name, o,
-                        optionalCtxStack.isNotEmpty(),
+                        optionalCtxStack.joinToString(","),
                         graphNameStack.lastOrNull()
                     )
                 )

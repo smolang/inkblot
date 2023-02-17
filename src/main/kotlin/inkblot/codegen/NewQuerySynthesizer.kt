@@ -34,31 +34,61 @@ class NewQuerySynthesizer(anchor: String, vars: Map<String, VariableProperties>,
         return "INSERT DATA { $insertStatements }"
     }
 
+    // TODO: can we replace most of this with an invocation to bindingsFor?
     override fun initializerUpdate(v: String): String {
-        // figure out in which optional contexts v is safe
-        // get all edges along paths to v
+        // v is safe in all contexts that have the bindingContext as a prefix
+        // edges from parent contexts of the binding context are safe
+        val bindingContext = paths.definingContextForVariable(v)
+
+        // all paths to v that are safe in this context
+        val requiredPaths = paths.pathsToVariable(v).filter { path -> path.all { bindingContext.startsWith(it.dependency.optionalContexts) } }
+
+        // create concrete leaved paths that intersect with this property and are (newly) safe in this context
+        val requiredConcreteLeavedPaths = paths.concreteLeaves().flatMap { paths.pathsToConcrete(it) }.filter { path ->
+            path.any { it.dependency.optional } && path.all { bindingContext.startsWith(it.dependency.optionalContexts) } && requiredPaths.any{ pPath -> pPath.toSet().intersect(path.toSet()).isNotEmpty() }
+        }
+
+        //println("Newly safe concrete leaved paths for $v: $requiredConcreteLeavedPaths")
+
+        // maybe we'll worry about variable-leaved paths here at some point
+        // TODO
+
+        val varEdges = requiredPaths.flatten().map{ it.dependency }.toSet()
+        val conEdges = requiredConcreteLeavedPaths.flatten().map{ it.dependency }.toSet()
+        val requiredEdges = varEdges + conEdges
+
         // recursively expand using edges considered safe not already in edge set
         // provide copy of select query in where clause to provide variable bindings?
-        return ""
+        val insertStatements = renderEdgeSet(requiredEdges, setOf(v))
+        return "INSERT DATA { $insertStatements }"
     }
 
     override fun changeUpdate(v: String): String {
-        // create insert / delete clauses as in old synthesizer
-        // recursively expand WHERE clause to bind variables appropriately?
         val varPaths = paths.pathsToVariable(v)
         val deleteSentences = mutableListOf<String>()
         val insertSentences = mutableListOf<String>()
-        val whereSentences = mutableListOf<String>()
+        val requiredVarBindings = mutableSetOf<String>()
+        val lastEdges = mutableSetOf<VarDependency>()
 
         varPaths.forEach { path ->
             val lastEdge = path.last()
+            lastEdges.add(lastEdge.dependency)
             val lastEdgeUri = lastEdge.dependency.p
-            val lastNodeVar = if(path.size == 1) "?anchor" else "?${lastEdge.destination}"
+            val lastNodeVar = if(path.size == 1) "?anchor" else "?${lastEdge.source}"
+
+            // if we use this variable in the delete/insert, we have to bind it in the where
+            if(path.size > 1)
+                requiredVarBindings.add(lastEdge.source)
+
             deleteSentences.add(tripleInGraph(lastNodeVar, lastEdgeUri, "?o", lastEdge.backward, lastEdge.dependency.inGraph))
             insertSentences.add(tripleInGraph(lastNodeVar, lastEdgeUri, "?n", lastEdge.backward, lastEdge.dependency.inGraph))
         }
 
-        return "DELETE { ${deleteSentences.joinToString(" ")} } INSERT { ${insertSentences.joinToString(" ")}} WHERE {}"
+        val ctx = paths.definingContextForVariable(v)
+        val bindings = bindingsFor(requiredVarBindings, ctx).minus(lastEdges)
+        val whereSentences = renderEdgeSet(bindings, requiredVarBindings)
+
+        return "DELETE { ${deleteSentences.joinToString(" ")} } INSERT { ${insertSentences.joinToString(" ")}} WHERE { $whereSentences }"
     }
 
     override fun addUpdate(v: String): String {
@@ -67,6 +97,39 @@ class NewQuerySynthesizer(anchor: String, vars: Map<String, VariableProperties>,
 
     override fun removeUpdate(v: String): String {
         return ""
+    }
+
+    private fun bindingsFor(vars: Set<String>, optionalCtx: String): Set<VarDependency> {
+        val toBind = vars.toMutableSet()
+        val bound = mutableSetOf<String>()
+        val bindings = mutableSetOf<VarDependency>()
+
+        println("Gathering bindings for: $vars")
+
+        while (toBind.isNotEmpty()) {
+            val v = toBind.first()
+            toBind.remove(v)
+            bound.add(v)
+
+            println("Binding: $v")
+
+            val edges = paths.edgesFor(v).filter { optionalCtx.startsWith(it.optionalContexts) }
+            bindings.addAll(edges)
+            println("Edges: $edges")
+            val newVars = edges.flatMap {
+                if(it.oNode.isVariable && it.sNode.isVariable)
+                    listOf(it.o, it.s)
+                else if(it.oNode.isVariable)
+                    listOf(it.o)
+                else if(it.sNode.isVariable)
+                    listOf(it.s)
+                else emptyList()
+            }.toSet().minus(bound).filter { it != anchor }
+            println("New vars to bind: $newVars")
+            toBind.addAll(newVars)
+        }
+
+        return bindings
     }
 
     private fun renderEdgeSet(edgeSet: Set<VarDependency>, assignableVars: Set<String>): String {
@@ -79,7 +142,9 @@ class NewQuerySynthesizer(anchor: String, vars: Map<String, VariableProperties>,
             edges.joinToString(" ") {
                 val s = if(it.sNode.isURI)
                     "<${it.s}>"
-                else if (it.s == anchor || assignableVars.contains(it.s))
+                else if(it.s == anchor)
+                    "?anchor"
+                else if (assignableVars.contains(it.s))
                     "?${it.s}"
                 else {
                     if(blankNodeMap.containsKey(it.s))
@@ -96,7 +161,9 @@ class NewQuerySynthesizer(anchor: String, vars: Map<String, VariableProperties>,
                     "<${it.o}>"
                 else if(it.oNode.isLiteral)
                     "\"${it.o}\""
-                else if(it.o == anchor || assignableVars.contains(it.o))
+                else if(it.o == anchor)
+                    "?anchor"
+                else if(assignableVars.contains(it.o))
                     "?${it.o}"
                 else {
                     if(blankNodeMap.containsKey(it.o))

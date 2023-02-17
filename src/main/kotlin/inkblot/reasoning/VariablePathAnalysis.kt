@@ -11,6 +11,7 @@ class VariablePathAnalysis(query: Query, val anchor: String) {
     val simpleProperties = mutableMapOf<String, String>()
     private val dependencyPaths: Map<String, List<List<VarDepEdge>>>
     private val concreteLeafPaths: Map<String, List<List<VarDepEdge>>>
+    private val optionalContextsByVariable: Map<String, List<String>>
 
     init {
         if(!query.isSelectType)
@@ -19,6 +20,7 @@ class VariablePathAnalysis(query: Query, val anchor: String) {
         query.resetResultVars()
         query.queryPattern.visit(visitor)
 
+        optionalContextsByVariable = visitor.variablesInOptionalContexts.groupBy { it.first }.mapValues { (_, v) -> v.map { it.second } }
         checkConflictingBindings()
 
         dependencyPaths = VariableDependencePaths.variableDependencyPaths(anchor, resultVars, visitor.variableDependencies)
@@ -29,11 +31,10 @@ class VariablePathAnalysis(query: Query, val anchor: String) {
     }
 
     private fun checkConflictingBindings() {
-        val optCtxStacks = visitor.variablesInOptionalContexts.groupBy { it.first }.mapValues { (_, v) -> v.map { it.second } }
         resultVars.filter { !visitor.safeVariables.contains(it) }.forEach { v ->
-            if(!optCtxStacks.containsKey(v))
+            if(!optionalContextsByVariable.containsKey(v))
                 throw Exception("SPARQL variable '?$v' from result set does not actually appear in query")
-            val stacks = optCtxStacks[v]!!.distinct().sortedBy { it.length }.toMutableList() // non-null assertion is safe since nullable vars occur in at least one context
+            val stacks = optionalContextsByVariable[v]!!.distinct().sortedBy { it.length }.toMutableList() // non-null assertion is safe since nullable vars occur in at least one context
             val distinctBindings = mutableListOf<String>()
 
             while(stacks.size > 0) {
@@ -68,11 +69,18 @@ class VariablePathAnalysis(query: Query, val anchor: String) {
         }
     }
 
+    fun definingContextForVariable(v: String): String {
+        // the defining context is the shallowest optional context stack in which the variable occurs
+        return optionalContextsByVariable[v]?.minBy { it.length } ?: throw Exception("No optional context data for variable '$v'")
+    }
+
     fun concreteLeaves(): Set<String> = visitor.concreteLeaves
     fun safeVariables(): Set<String> = visitor.safeVariables
 
     fun pathsToVariable(v: String) = dependencyPaths[v] ?: throw Exception("No path to variable '$v'")
     fun pathsToConcrete(c: String) = concreteLeafPaths[c] ?: throw Exception("No path to concrete leaf '$c'")
+
+    fun edgesFor(v: String) = visitor.variableDependencies.filter { it.o  == v || it.s == v }
 
 }
 

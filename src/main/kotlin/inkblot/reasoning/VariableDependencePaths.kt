@@ -108,10 +108,13 @@ data class VarDependency(
     val p: String,
     val o: String,
     val oNode: Node,
-    val optional: Boolean,
+    val optionalContexts: String,
     val inGraph: String?
 ) {
     override fun toString() = "($s-$p->$o)"
+
+    val optional: Boolean
+        get() = optionalContexts.isNotEmpty()
 
     // nodes should not factor into equality
     override fun equals(other: Any?): Boolean {
@@ -121,8 +124,8 @@ data class VarDependency(
 }
 
 data class VarDepEdge(val dependency: VarDependency, val backward: Boolean) {
-    val destination: String
-        get() = if(backward) dependency.s else dependency.o
+    val source: String
+        get() = if(backward) dependency.o else dependency.s
 
     override fun toString() = dependency.toString()
 }

@@ -39,7 +39,7 @@ class QuerySynthesizer(
         varPaths.forEach { path ->
             val lastEdge = path.last()
             val lastEdgeUri = lastEdge.dependency.p
-            val lastNodeVar = if(path.size == 1) "?anchor" else "?${lastEdge.destination}"
+            val lastNodeVar = if(path.size == 1) "?anchor" else "?${lastEdge.source}"
             deleteSentences.add(tripleInGraph(lastNodeVar, lastEdgeUri, "?o", lastEdge.backward, lastEdge.dependency.inGraph))
             insertSentences.add(tripleInGraph(lastNodeVar, lastEdgeUri, "?n", lastEdge.backward, lastEdge.dependency.inGraph))
             if(path.size > 1)
@@ -61,7 +61,7 @@ class QuerySynthesizer(
         varPaths.forEach { path ->
             val lastEdge = path.last()
             val lastEdgeUri = lastEdge.dependency.p
-            val lastNodeVar = if(path.size == 1) "?anchor" else "?${lastEdge.destination}"
+            val lastNodeVar = if(path.size == 1) "?anchor" else "?${lastEdge.source}"
             verbSentences.add(tripleInGraph(lastNodeVar, lastEdgeUri, "?o", lastEdge.backward, lastEdge.dependency.inGraph))
 
             if(path.size > 1)

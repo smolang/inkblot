@@ -75,7 +75,14 @@ object ShaclGenerator {
         if(!v.nullable)
             spec.add("sh:minCount 1")
 
+        val msg = when {
+            v.functional && !v.nullable -> " functional and non-null (exactly 1) and"
+            v.functional -> " functional (max 1) and"
+            else -> ""
+        }
+
         spec.add("sh:name \"${v.targetName} property of Inkblot class $className\"")
+        spec.add("sh:message \"${v.targetName} property of Inkblot class $className is expected to be$msg of type '${v.xsdType}'\"")
         spec.add(genShaclPath(paths))
 
         return "sh:property [ ${spec.joinToString("; ")}]"

@@ -7,12 +7,7 @@ import inkblot.reasoning.VariableProperties
 
 class NewQuerySynthesizer(anchor: String, vars: Map<String, VariableProperties>, paths: VariablePathAnalysis): AbstractQuerySynthesizer(anchor, vars, paths) {
     override fun baseCreationUpdate(): String {
-        // we have to initialize everything that's not optional
-        // concretely, that's three different things:
-        // 1. non-nullable variables that we'll assign concrete values to
-        // 2. concrete leaves
-        // 3. anonymous nodes that are not part of any path leading to either (1) or (2)
-
+        // check that we have constructor values for all requires sparql variables
         val assignableVars = variableInfo.filterValues{ it.functional && !it.nullable }.keys
         val requiredResultSetVars = paths.resultVars.intersect(paths.safeVariables()) - anchor
 
@@ -20,8 +15,9 @@ class NewQuerySynthesizer(anchor: String, vars: Map<String, VariableProperties>,
         if(unboundRequired.isNotEmpty())
             throw Exception("SPARQL variables ${unboundRequired.joinToString(", ")} are not optional but considered optional according to configured multiplicity")
 
+        // gather all edges that are required / non-optional, rendering variables we have constructor values for using their names and everything else as blank nodes
         val requiredEdges = bindingsFor(setOf(anchor), "")
-        val insertStatements = renderEdgeSet(requiredEdges, assignableVars)
+        val insertStatements = renderEdgeSet(requiredEdges, assignableVars.associateWith { it })
 
         return "INSERT DATA { $insertStatements }"
     }
@@ -51,11 +47,10 @@ class NewQuerySynthesizer(anchor: String, vars: Map<String, VariableProperties>,
 
         // recursively expand using edges considered safe not already in edge set
         // provide copy of select query in where clause to provide variable bindings?
-        val insertStatements = renderEdgeSet(requiredEdges, setOf(v))
+        val insertStatements = renderEdgeSet(requiredEdges, mapOf(v to "v"))
         return "INSERT DATA { $insertStatements }"
     }
 
-    // TODO: more accurate binding using concrete leaves as well
     private fun genericUpdate(v: String, delete: Boolean, insert: Boolean): String {
         val deleteSentences = mutableListOf<String>()
         val insertSentences = mutableListOf<String>()
@@ -81,15 +76,17 @@ class NewQuerySynthesizer(anchor: String, vars: Map<String, VariableProperties>,
             }
 
             // when deleting, we only want to delete what's absolutely necessary, e.g. leaving type labels of removed nodes intact
-            if(lastEdgesOnPaths.contains(edge))
+            if(lastEdgesOnPaths.contains(edge)) {
                 deleteSentences.add(tripleInGraph(source, edge.p, "?o", backwards, edge.inGraph))
+                lastEdges.add(edge)
+            }
             insertSentences.add(tripleInGraph(source, edge.p, "?n", backwards, edge.inGraph))
-            lastEdges.add(edge)
         }
 
         val ctx = paths.definingContextForVariable(v)
-        val bindings = bindingsFor(requiredVarBindings, ctx)
-        val whereSentences = renderEdgeSet(bindings, requiredVarBindings)
+        // in the pure insertion case we cannot include full bindings in the where clause because those structures might not be there yet
+        val bindings = if(insert && !delete) bindingsFor(requiredVarBindings, ctx) else bindingsFor(requiredVarBindings, ctx).minus(lastEdges)
+        val whereSentences = renderEdgeSet(bindings, requiredVarBindings.associateWith { it })
 
         if(!delete && !insert)
             throw Exception("Not inserting anything and not deleting anything is probably unintentional")
@@ -122,11 +119,8 @@ class NewQuerySynthesizer(anchor: String, vars: Map<String, VariableProperties>,
             toBind.remove(v)
             bound.add(v)
 
-            println("Binding: $v")
-
             val edges = paths.edgesFor(v).filter { optionalCtx.startsWith(it.optionalContexts) }
             bindings.addAll(edges)
-            println("Edges: $edges")
             val newVars = edges.flatMap {
                 if(it.oNode.isVariable && it.sNode.isVariable)
                     listOf(it.o, it.s)
@@ -136,14 +130,14 @@ class NewQuerySynthesizer(anchor: String, vars: Map<String, VariableProperties>,
                     listOf(it.s)
                 else emptyList()
             }.toSet().minus(bound).filter { it != anchor }
-            println("New vars to bind: $newVars")
             toBind.addAll(newVars)
         }
 
+        println(bindings)
         return bindings
     }
 
-    private fun renderEdgeSet(edgeSet: Set<VarDependency>, assignableVars: Set<String>): String {
+    private fun renderEdgeSet(edgeSet: Set<VarDependency>, assignableVars: Map<String,String>): String {
         // variable to blank node mapping
         var blankNodeCounter = 0
         val blankNodeMap = mutableMapOf<String, String>()
@@ -155,8 +149,8 @@ class NewQuerySynthesizer(anchor: String, vars: Map<String, VariableProperties>,
                     "<${it.s}>"
                 else if(it.s == anchor)
                     "?anchor"
-                else if (assignableVars.contains(it.s))
-                    "?${it.s}"
+                else if (assignableVars.containsKey(it.s))
+                    "?${assignableVars[it.s]}"
                 else {
                     if(blankNodeMap.containsKey(it.s))
                         blankNodeMap[it.s]!!
@@ -174,8 +168,8 @@ class NewQuerySynthesizer(anchor: String, vars: Map<String, VariableProperties>,
                     "\"${it.o}\""
                 else if(it.o == anchor)
                     "?anchor"
-                else if(assignableVars.contains(it.o))
-                    "?${it.o}"
+                else if(assignableVars.containsKey(it.o))
+                    "?${assignableVars[it.o]}"
                 else {
                     if(blankNodeMap.containsKey(it.o))
                         blankNodeMap[it.o]!!

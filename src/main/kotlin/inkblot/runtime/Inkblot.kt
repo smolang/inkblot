@@ -11,7 +11,7 @@ object Inkblot {
 
     private val violationListeners = mutableSetOf<ConstraintViolationListener>()
 
-    const val endpoint = "http://localhost:3030/bikes"
+    var endpoint = "http://localhost:3030/bikes"
     val loadedObjects = WeakHashMap<String, SemanticObject>()
     val dirtySet = mutableSetOf<SemanticObject>() // we keep modified objects here in addition to the weak hashmap to ensure they aren't unloaded
     val changelog = mutableListOf<ChangeNode>()

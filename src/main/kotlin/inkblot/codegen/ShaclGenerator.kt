@@ -25,7 +25,7 @@ object ShaclGenerator {
             shapeStatements.add(genPropertyShape(className, it, paths.pathsToVariable(it.sparqlName)))
         }
 
-        return "<$shapeUri> ${shapeStatements.joinToString("; ")}."
+        return "<$shapeUri> ${shapeStatements.joinToString(";\n")}."
     }
 
     // SPARQL happens to be annoyingly expressive
@@ -85,7 +85,7 @@ object ShaclGenerator {
         spec.add("sh:message \"${v.targetName} property of Inkblot class $className is expected to be$msg of type '${v.xsdType}'\"")
         spec.add(genShaclPath(paths))
 
-        return "sh:property [ ${spec.joinToString("; ")}]"
+        return "sh:property [\n\t${spec.joinToString(";\n\t")}\n]"
 
     }
 

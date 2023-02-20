@@ -296,21 +296,23 @@ class SemanticObjectGenerator(
                 set(value) {
                     ${indent(genDeleteCheck(targetName), 5)}
                     
-                    val oldValueNode = ${TypeMapper.valueToLiteral("field", xsdType)}.asNode()
-                    val newValueNode = ${TypeMapper.valueToLiteral("value", xsdType)}.asNode()
                     if(value == null) {
                         // Unset value
+                        val oldValueNode = ${TypeMapper.valueToLiteral("field", xsdType)}.asNode()
                         ${indent(changeNodeGenerator.removeCN("uri", sparqlName, "oldValueNode"), 6)}
                         Inkblot.changelog.add(cn)
                     }
                     else if(field == null) {
                         // Pure insertion
+                        val newValueNode = ${TypeMapper.valueToLiteral("value", xsdType)}.asNode()
                         ${indent(genRuntimeTypeChecks(properties, "value"), 6)}
                         ${indent(changeNodeGenerator.addCN("uri", sparqlName, "newValueNode"), 6)}
                         Inkblot.changelog.add(cn)
                     }
                     else {
                         // Update value
+                        val oldValueNode = ${TypeMapper.valueToLiteral("field", xsdType)}.asNode()
+                        val newValueNode = ${TypeMapper.valueToLiteral("value", xsdType)}.asNode()
                         ${indent(genRuntimeTypeChecks(properties, "value"), 6)}
                         ${indent(changeNodeGenerator.changeCN("uri", sparqlName, "oldValueNode", "newValueNode!!"), 6)}
                         Inkblot.changelog.add(cn)
@@ -392,21 +394,22 @@ class SemanticObjectGenerator(
                     ${indent(genDeleteCheck(targetName), 5)}
                     field = value
 
-                    val oldValueNode = ResourceFactory.createResource(_inkbltRef_$targetName).asNode()
-                    val newValueNode = ResourceFactory.createResource(value?.uri).asNode()
-
                     if(value == null) {
                         // Unset value
+                        val oldValueNode = ResourceFactory.createResource(_inkbltRef_$targetName).asNode()
                         ${indent(changeNodeGenerator.removeCN("uri", sparqlName, "oldValueNode"), 6)}
                         Inkblot.changelog.add(cn)
                     }
                     else if(_inkbltRef_$targetName == null) {
                         // Pure insertion
+                        val newValueNode = ResourceFactory.createResource(value?.uri).asNode()
                         ${indent(changeNodeGenerator.addCN("uri", sparqlName, "newValueNode"), 6)}
                         Inkblot.changelog.add(cn)
                     }
                     else {
                         // Change value
+                        val oldValueNode = ResourceFactory.createResource(_inkbltRef_$targetName).asNode()
+                        val newValueNode = ResourceFactory.createResource(value?.uri).asNode()
                         ${indent(changeNodeGenerator.changeCN("uri", sparqlName, "oldValueNode", "newValueNode"), 6)}
                         Inkblot.changelog.add(cn)
                     }

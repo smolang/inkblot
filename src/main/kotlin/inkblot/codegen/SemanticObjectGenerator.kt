@@ -1,6 +1,5 @@
 package inkblot.codegen
 
-import inkblot.reasoning.VariablePathAnalysis
 import inkblot.reasoning.VariableProperties
 import org.apache.jena.query.Query
 import java.io.File
@@ -13,8 +12,8 @@ class SemanticObjectGenerator(
     anchor: String,
     namespace: String,
     variableInfo: Map<String, VariableProperties>,
-    paths: VariablePathAnalysis
-): AbstractSemanticObjectGenerator(className, query, anchor, namespace, variableInfo, paths) {
+    synthesizer: AbstractQuerySynthesizer
+): AbstractSemanticObjectGenerator(className, query, anchor, namespace, variableInfo, synthesizer) {
 
     private val changeNodeGenerator = ChangeNodeGenerator(synthesizer)
     private var pkg = "gen"

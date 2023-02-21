@@ -7,9 +7,10 @@ import inkblot.reasoning.VariableProperties
 class QuerySynthesizer(
     anchor: String,
     variableInfo: Map<String, VariableProperties>,
-    paths: VariablePathAnalysis
-): AbstractQuerySynthesizer(anchor, variableInfo, paths) {
-    override fun baseCreationUpdate(): String {
+    paths: VariablePathAnalysis,
+    queryMap: MutableMap<String, String>
+): AbstractQuerySynthesizer(anchor, variableInfo, paths, queryMap) {
+    override fun synthBaseCreationUpdate(): String {
         val concreteLeaves = paths.concreteLeaves()
         val safeInitVars = variableInfo.filterValues{ it.functional && !it.nullable }.keys
 
@@ -23,14 +24,14 @@ class QuerySynthesizer(
         return "INSERT DATA { $variableInitializers $concreteInitializers }"
     }
 
-    override fun initializerUpdate(v: String): String {
+    override fun synthInitializerUpdate(v: String): String {
         val insertSentences = paths.pathsToVariable(v).joinToString(" ") {
             pathToSparqlSelect(it, "?v")
         }
         return "INSERT DATA { $insertSentences }"
     }
 
-    override fun changeUpdate(v: String): String {
+    override fun synthChangeUpdate(v: String): String {
         val varPaths = paths.pathsToVariable(v)
         val deleteSentences = mutableListOf<String>()
         val insertSentences = mutableListOf<String>()
@@ -49,9 +50,9 @@ class QuerySynthesizer(
         return "DELETE { ${deleteSentences.joinToString(" ") } } INSERT { ${insertSentences.joinToString(" ")}} WHERE { ${whereSentences.joinToString(" ")} }"
     }
 
-    override fun addUpdate(v: String) = verbLastEdgeWherePath("INSERT", v)
+    override fun synthAddUpdate(v: String) = verbLastEdgeWherePath("INSERT", v)
 
-    override fun removeUpdate(v: String) = verbLastEdgeWherePath("DELETE", v)
+    override fun synthRemoveUpdate(v: String) = verbLastEdgeWherePath("DELETE", v)
 
     private fun verbLastEdgeWherePath(verb: String, v: String): String {
         val varPaths = paths.pathsToVariable(v)

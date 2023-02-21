@@ -23,6 +23,7 @@ class Inkblt : CliktCommand() {
 class Generate: CliktCommand(help="Generate library classes from a configuration file") {
     private val config: String by argument(help="JSON file containing SPARQL queries and options")
     private val outPath: String by argument(help="location where generated files should be placed")
+    private val queryOverrideFile: String? by option("--use-queries", help="use SPARQL queries from an inkblot-override JSON file instead of generated queries")
     private val backend by option("--backend", help="code generation backend to use - defaults to kotlin and only supports kotlin").default("kotlin")
     private val options by option("--options", help="backend-specific options").default("")
     private val pkgOpt by option("-p", "--package", help="package identifier to use for generated files")
@@ -46,6 +47,11 @@ class Generate: CliktCommand(help="Generate library classes from a configuration
         if(pkgOpt != null)
             backendOptions.add("pkg=$pkgOpt")
 
+        val queryMaps: MutableMap<String, Map<String, String>> = if(queryOverrideFile == null)
+            mutableMapOf()
+        else
+            Json.decodeFromString(File(queryOverrideFile!!).readText())
+
         val jsonCfg = File(config)
         val cfg: Map<String, ClassConfig> = Json.decodeFromString(jsonCfg.readText())
         cfg.forEach { (className, classConfig) -> TypeMapper.registerClassType(classConfig.type, className) }
@@ -63,10 +69,14 @@ class Generate: CliktCommand(help="Generate library classes from a configuration
             val classNamespace = classConfig.namespace ?: namespace
             val query = ParameterizedSparqlString(classConfig.query).asQuery()
             val paths = VariablePathAnalysis(query, classConfig.anchor)
+            // use override query lists with synthesizer if we have override info for that class, otherwise use empty mapping
+            val synthesizer = NewQuerySynthesizer(classConfig.anchor, variableInfo, paths, queryMaps.getOrDefault(className, emptyMap()).toMutableMap())
 
             when(backend) {
                 "kotlin" -> {
-                    val generator = SemanticObjectGenerator(className, query, classConfig.anchor, classNamespace, variableInfo, paths)
+                    val generator = SemanticObjectGenerator(
+                        className, query, classConfig.anchor, classNamespace, variableInfo, synthesizer
+                    )
                     generator.generateToFilesInPath(path, backendOptions)
                 }
                 else -> throw Exception("Unknown code generation backend '$backend'")
@@ -74,7 +84,16 @@ class Generate: CliktCommand(help="Generate library classes from a configuration
 
             // SHACL constraints
             ShaclGenerator.generateToFilesInPath(path, classConfig.type, className, variableInfo.values, paths)
+
+            // Collect generated SPARQL to create override file
+            queryMaps[className] = synthesizer.effectiveQueries
         }
+
+        val encoder = Json { prettyPrint = true }
+        val json = encoder.encodeToString(queryMaps)
+        val queryOverrideFile = File(path.toFile(), "inkblot-query-override.json")
+        queryOverrideFile.writeText(json)
+        println("Generated file 'inkblot-query-override.json'")
     }
 }
 

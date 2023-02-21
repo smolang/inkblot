@@ -5,8 +5,8 @@ import inkblot.reasoning.VarDependency
 import inkblot.reasoning.VariablePathAnalysis
 import inkblot.reasoning.VariableProperties
 
-class NewQuerySynthesizer(anchor: String, vars: Map<String, VariableProperties>, paths: VariablePathAnalysis): AbstractQuerySynthesizer(anchor, vars, paths) {
-    override fun baseCreationUpdate(): String {
+class NewQuerySynthesizer(anchor: String, vars: Map<String, VariableProperties>, paths: VariablePathAnalysis, queryMap: MutableMap<String, String>): AbstractQuerySynthesizer(anchor, vars, paths, queryMap) {
+    override fun synthBaseCreationUpdate(): String {
         // check that we have constructor values for all requires sparql variables
         val assignableVars = variableInfo.filterValues{ it.functional && !it.nullable }.keys
         val requiredResultSetVars = paths.resultVars.intersect(paths.safeVariables()) - anchor
@@ -23,7 +23,7 @@ class NewQuerySynthesizer(anchor: String, vars: Map<String, VariableProperties>,
     }
 
     // TODO: can we replace most of this with an invocation to bindingsFor?
-    override fun initializerUpdate(v: String): String {
+    override fun synthInitializerUpdate(v: String): String {
         // v is safe in all contexts that have the bindingContext as a prefix
         // edges from parent contexts of the binding context are safe
         val bindingContext = paths.definingContextForVariable(v)
@@ -101,18 +101,16 @@ class NewQuerySynthesizer(anchor: String, vars: Map<String, VariableProperties>,
         return stmt
     }
 
-    override fun changeUpdate(v: String) = genericUpdate(v, delete = true, insert = true)
+    override fun synthChangeUpdate(v: String) = genericUpdate(v, delete = true, insert = true)
 
-    override fun addUpdate(v: String) = genericUpdate(v, delete = false, insert = true)
+    override fun synthAddUpdate(v: String) = genericUpdate(v, delete = false, insert = true)
 
-    override fun removeUpdate(v: String) = genericUpdate(v, delete = true, insert = false)
+    override fun synthRemoveUpdate(v: String) = genericUpdate(v, delete = true, insert = false)
 
     private fun bindingsFor(vars: Set<String>, optionalCtx: String): Set<VarDependency> {
         val toBind = vars.toMutableSet()
         val bound = mutableSetOf<String>()
         val bindings = mutableSetOf<VarDependency>()
-
-        println("Gathering bindings for: $vars")
 
         while (toBind.isNotEmpty()) {
             val v = toBind.first()
@@ -133,7 +131,6 @@ class NewQuerySynthesizer(anchor: String, vars: Map<String, VariableProperties>,
             toBind.addAll(newVars)
         }
 
-        println(bindings)
         return bindings
     }
 

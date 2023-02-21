@@ -1,9 +1,12 @@
 # Writing SPARQL for inkblot
 
 SPARQL is a terrifyingly expressive language.
+
 As inkblot will have to generate not just read but also write/modify queries from your SPARQL input, we intentionally limit the supported SPARQL constructs.  
-Even with these limits, we acknowledge that it is still very possible to write a SPARQL query for which inkblot will generate unintuitive or straight up incorrect code.
-We will therefore take some time here to explain how to write SPARQL for which inkblot can generate code with high confidence and in which cases you should perhaps double-check the output.
+
+Even with these limits, we acknowledge that it is still very possible to write a SPARQL query for which inkblot will generate unintuitive or straight up incorrect code. We will therefore take some time here to explain how to write SPARQL for which inkblot can generate code with high confidence and in which cases you should perhaps double-check the output.
+
+At the end of this document we will also outline how you can customize the SPARQL queries used by inkblot to better suit your needs.
 
 ## Simple Properties
 
@@ -90,3 +93,15 @@ Filters are allowed in the SELECT queries and will be used when loading objects 
 * Be aware of writeback semantics especially for constants included in the query
 
 While inkblot can deal with all of these issues to some degree, they require significantly more complex code paths and allow for subtle deviations from expected behaviour.
+
+## Query override / Using custom queries
+
+If the default decisions made by inkblot do not match the semantics required by your application, we provide an override mechanism you can use to customize all non-trivial SPARQL queries/updates executed by inkblot.
+
+Whenever inkblot generates a library, it also creates a file named `inkblot-query-override.json` in the output directory that contains all generated SPARQL queries. You can edit the queries in this file to suit your needs. Then, when generating the library again, pass `--use-queries <modified override json>` as an argument and inkblot will use your modified queries. Queries not found in the override file will be generated as usual.
+
+When modifying queries, keep in mind that:
+* `?anchor` will be bound to the anchor URI of the current object
+* for creation updates, sparql variables will be bound to values from the class constructor as specified in the configuration
+* for initializer queries, `?v` will be bound to the value of the initialized property
+* for change/add/remove updates, `?o` will be bound to the old value of the property and `?n` will be bound to the new value (if such values exist)

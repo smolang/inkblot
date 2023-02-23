@@ -30,6 +30,9 @@ class VariablePathAnalysis(query: Query, val anchor: String) {
         concreteLeafPaths = VariableDependencePaths.variableDependencyPaths(anchor, visitor.concreteLeaves, visitor.variableDependencies)
     }
 
+    val queryContainsFilter: Boolean
+        get() = visitor.containsFilter
+
     private fun checkConflictingBindings() {
         resultVars.filter { !visitor.safeVariables.contains(it) }.forEach { v ->
             if(!optionalContextsByVariable.containsKey(v))
@@ -81,7 +84,6 @@ class VariablePathAnalysis(query: Query, val anchor: String) {
     fun pathsToConcrete(c: String) = concreteLeafPaths[c] ?: throw Exception("No path to concrete leaf '$c'")
 
     fun edgesFor(v: String) = visitor.variableDependencies.filter { it.o  == v || it.s == v }
-
 }
 
 data class VariableProperties(

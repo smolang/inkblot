@@ -35,6 +35,10 @@ object ShaclGenerator {
     private fun checkForWeirdness(className: String, variableInfo: Collection<VariableProperties>, paths: VariablePathAnalysis) {
         val concreteLeaves = paths.concreteLeaves().map { paths.pathsToConcrete(it) }
 
+        // filters restrict selected objects in a way that we can't really map to SHACL
+        if(paths.queryContainsFilter)
+            println("WARNING: Query contains a filter, generated SHACL will apply to un-filtered equivalent")
+
         // we expect one concrete leaf to specify the type of what we select - this is fine and can be mapped to SHACL
         val relevantLeaves = concreteLeaves.filterNot { it.size == 1 && it.first().size == 1 && it.first().first().dependency.p == "http://www.w3.org/1999/02/22-rdf-syntax-ns#type" }.flatten()
 

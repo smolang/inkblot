@@ -4,7 +4,7 @@ Inkblot generates object-oriented libraries for semantic data access.
 
 ## Usage
 
-The main inputs for inkblot will be the SPARQL queries that you would use to load the instances you are interested in. Many advanced SPARQL features are not supported, but any sufficiently simple query should work.
+The main inputs for inkblot will be the SPARQL queries that you would use to load the instances you are interested in. Many advanced SPARQL features are not supported, but any sufficiently simple query should work. For guidelines on how to write SPARQL for inkblot, see [SPARQL.md](SPARQL.md).
 
 Write one query for each class you'd like to have in the generated library. For example:
 
@@ -157,3 +157,13 @@ Objects can be marked for deletion using the `delete()` class method. Objects ma
 It is also possible to merge two objects of the same class together using the `merge(other)` class method. This will copy all properties from the `other` object into the invoking object, overwriting existing values for functional properties. If a nullable property in the `other` object is null, any existing value in the involing object will not be overwritten.
 
 Finally, the `other` object is deleted and **all references to its anchor URI are replaced with the URI of the invoking object**.
+
+## Runtime details
+
+### Object creation
+
+For newly created objects, inkblot will generate a fresh URI in the namespace configured for that class or the default namespace of the project, defaulting to `http://rec0de.net/ns/inkblot#` if no namespace is given. To ensure unique identifiers across restarts and/or multiple instances, inkblot generates short UUID-like identifiers consisting of a timestamp and some random bytes. For example, an object of class bike created in the default namespace might receive the URI `http://rec0de.net/ns/inkblot#bike-42d4bwa-r5nrsvqs`.
+
+These unique identifiers are designed to provide a collision probability of ≤10^-6 over a lifetime of 14 years while supporting 15.000 global object creations of a given class per second (technically 1.500 per 100ms).
+
+If these parameters do not match your needs, it is possible to change the ID generator of the inkblot runtime to a custom implementation of the `FreshUriGenerator` interface.

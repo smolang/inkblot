@@ -113,6 +113,8 @@ For each class defined in the json configuration, inkblot will generate a `<clas
 * `ExFactory.loadFromURI(uri: String)` loads a single object given its anchor URI
 * `ExFactory.commitAndLoadAll()` returns a list of all class instances in the datastore
 * `ExFactory.commitAndLoadSelected(filter: String)` returns a list of all class instances matching the given SPARQL filter expression (using variable names as in the input SPARQL query)
+* `ExFactory.validateOnlineData()` runs validating SPARQL queries against the endpoint to check if the datastore is consistent with the assumptions made in the configuration. Causes a `ValidationQueryFailure` constraint violation on failure.
+* `ExFactory.addValidatingQuery(query: Query)` add an additional custom validating query. This query will be executed every time `validateOnlineData` is called and is expected to return an empty result. If the result is not empty, an exception is thrown.
 
 ### Classes
 
@@ -160,6 +162,10 @@ Finally, the `other` object is deleted and **all references to its anchor URI ar
 
 ## Runtime details
 
+### Setting a SPARQL endpoint
+
+Before using any inkblot functions, you should set the SPARQL endpoint of your data store. You can do this at runtime (`Inkblot.endpoint = "http://..."`) or by hardcoding a custom value in `Inkblot.kt`. Changing the endpoint at runtime also ensures that the Jena ARQ components are initialized before you do anything else.
+
 ### Object creation
 
 For newly created objects, inkblot will generate a fresh URI in the namespace configured for that class or the default namespace of the project, defaulting to `http://rec0de.net/ns/inkblot#` if no namespace is given. To ensure unique identifiers across restarts and/or multiple instances, inkblot generates short UUID-like identifiers consisting of a timestamp and some random bytes. For example, an object of class bike created in the default namespace might receive the URI `http://rec0de.net/ns/inkblot#bike-42d4bwa-r5nrsvqs`.
@@ -167,3 +173,9 @@ For newly created objects, inkblot will generate a fresh URI in the namespace co
 These unique identifiers are designed to provide a collision probability of ≤10^-6 over a lifetime of 14 years while supporting 15.000 global object creations of a given class per second (technically 1.500 per 100ms).
 
 If these parameters do not match your needs, it is possible to change the ID generator of the inkblot runtime to a custom implementation of the `FreshUriGenerator` interface.
+
+### Constraint violations
+
+The inkblot runtime offers some support for detecting data constraint violations at runtime. For now, this is only supported for failing validation queries and the (non-) positive/negative integer xsd types, which are mapped to java BigInteger objects that do not have the same range constraints. When values conflicting with the xsd data type range are assigned to a property at runtime, inkblot registers a constraint violation and notifies all `ConstraintViolationListeners`. Listeners may be added or removed using `Inkblot.addViolationListener(listener: ConstraintViolationListener)` and `Inkblot.removeViolationListener(listener: ConstraintViolationListener)`.
+
+You may also extend the amount of runtime checks by implementing custom subclasses of `ConstraintViolation` and call `Inkblot.violation(violation: ConstraintViolation)` to notify listeners.

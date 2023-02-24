@@ -10,7 +10,7 @@ At the end of this document we will also outline how you can customize the SPARQ
 
 ## Simple Properties
 
-The simplest class of SPARQL queries are those that consist only of what we call **simple properties**. A SPARQL variable forms a simple property if it meets these four criteria:
+The simplest class of SPARQL queries are those that consist only of what we call **simple properties**. A SPARQL variable forms a simple property if it meets these three criteria:
 
 1. It is the object of a relation that has the anchor as its subject, i.e. `?anchor ex:rel ?simpleProp`
 2. The variable occurs in no other relationship

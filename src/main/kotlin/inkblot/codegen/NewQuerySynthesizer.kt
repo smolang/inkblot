@@ -1,6 +1,5 @@
 package inkblot.codegen
 
-import inkblot.reasoning.VarDepEdge
 import inkblot.reasoning.VarDependency
 import inkblot.reasoning.VariablePathAnalysis
 import inkblot.reasoning.VariableProperties
@@ -14,6 +13,11 @@ class NewQuerySynthesizer(anchor: String, vars: Map<String, VariableProperties>,
         val unboundRequired = requiredResultSetVars.minus(assignableVars)
         if(unboundRequired.isNotEmpty())
             throw Exception("SPARQL variables ${unboundRequired.joinToString(", ")} are not optional but considered optional according to configured multiplicity")
+
+        val boundButOptional = assignableVars.minus(requiredResultSetVars)
+        if(boundButOptional.isNotEmpty())
+            throw Exception("SPARQL variables ${boundButOptional.joinToString(", ")} are optional in SPARQL but not considered optional according to configured multiplicity")
+
 
         // gather all edges that are required / non-optional, rendering variables we have constructor values for using their names and everything else as blank nodes
         val requiredEdges = bindingsFor(setOf(anchor), "")
@@ -85,7 +89,7 @@ class NewQuerySynthesizer(anchor: String, vars: Map<String, VariableProperties>,
 
         val ctx = paths.definingContextForVariable(v)
         // in the pure insertion case we cannot include full bindings in the where clause because those structures might not be there yet
-        val bindings = if(insert && !delete) bindingsFor(requiredVarBindings, ctx) else bindingsFor(requiredVarBindings, ctx).minus(lastEdges)
+        val bindings = if(insert && !delete) bindingsFor(requiredVarBindings, ctx).minus(lastEdges) else bindingsFor(requiredVarBindings, ctx)
         val whereSentences = renderEdgeSet(bindings, requiredVarBindings.associateWith { it })
 
         if(!delete && !insert)

@@ -8,3 +8,5 @@ interface ConstraintViolation
 
 data class VariableDomainViolation(val onObject: SemanticObject, val propertyName: String, val targetType: String) :
     ConstraintViolation
+
+data class ValidationQueryFailure(val forClass: String, val query: String) : ConstraintViolation

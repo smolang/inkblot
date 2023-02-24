@@ -1,27 +1,47 @@
 package net.rec0de.inkblot.runtime
 
+import net.rec0de.inkblot.codegen.prettifySparql
 import org.apache.jena.query.*
 import org.apache.jena.sparql.exec.http.QueryExecutionHTTP
 import org.apache.jena.sparql.syntax.ElementFilter
 import org.apache.jena.sparql.syntax.ElementGroup
 import org.apache.jena.sparql.util.ExprUtils
 
-abstract class SemanticObjectFactory<Obj>(private val validateQuery: String, private val debugName: String) {
+abstract class SemanticObjectFactory<Obj>(validateQuery: String, private val debugName: String) {
     protected abstract val anchor: String
     protected abstract val query: ParameterizedSparqlString
+    private val validatingQueries: MutableList<Query>
 
     init {
-        validateOnlineData()
+        validatingQueries = mutableListOf(QueryFactory.create(validateQuery))
+        validateOnlineData(exceptionOnFailure = true)
     }
 
-    fun validateOnlineData() {
-        // Run validation query to check that our assumptions about types / multiplicities match reality
-        val q = QueryFactory.create(validateQuery)
-        println("Running validation query for $debugName")
-        val execCtx = QueryExecutionHTTP.service(Inkblot.endpoint, q)
-        val res = execCtx.execSelect()
-        if(res.hasNext())
-            throw Exception("Validation query failed for $debugName, data at endpoint looks inconsistent. Query: $validateQuery")
+    // Run validation queries to check that our assumptions about types / multiplicities match reality
+    fun validateOnlineData(exceptionOnFailure: Boolean = false) {
+        if(validatingQueries.size == 1)
+            println("Running 1 validation query for $debugName")
+        else
+            println("Running ${validatingQueries.size} validation queries for $debugName")
+
+        validatingQueries.forEach { query ->
+            val execCtx = QueryExecutionHTTP.service(Inkblot.endpoint, query)
+            val res = execCtx.execSelect()
+            if(res.hasNext()) {
+                val stringQuery = prettifySparql(query)
+
+                if(exceptionOnFailure)
+                    throw Exception("Validation query failed for $debugName, data at endpoint looks inconsistent. Query: $stringQuery")
+
+                Inkblot.violation(ValidationQueryFailure(debugName, stringQuery))
+            }
+        }
+    }
+
+    // Allow use of existing validation infrastructure to run custom checks
+    // Validating queries are expected to return empty result on success and non-empty on failure
+    fun addValidatingQuery(query: Query) {
+        validatingQueries.add(query)
     }
 
     fun loadFromURI(uri: String): Obj {

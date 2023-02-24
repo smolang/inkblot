@@ -86,12 +86,6 @@ abstract class CommonSPOChange(private val query: String, private val s: String,
     }
 }
 
-class ChangeSingletProperty(
-    objectUri: String,
-    propertyUri: String,
-    newValue: Node
-) : CommonSPOChange("DELETE { ?s ?p ?x } WHERE { ?s ?p ?x }; INSERT DATA { ?s ?p ?o }", objectUri, propertyUri, newValue)
-
 class CommonPropertyAdd(
     objectUri: String,
     propertyUri: String,
@@ -118,22 +112,6 @@ class CommonPropertyChange(private val objectUri: String, private val propertyUr
         template.setIri("p", propertyUri)
         template.setParam("o", oldValue)
         template.setParam("n", newValue)
-        return template.asUpdate()
-    }
-}
-
-class UnsetSingletProperty(private val objectUri: String, private val propertyUri: String) : CommonChangeNode() {
-    override fun commitChange(endpoint: String) {
-        val builder = UpdateExecHTTPBuilder.create()
-        builder.endpoint(endpoint)
-        builder.update(asUpdate())
-        builder.execute()
-    }
-
-    override fun asUpdate(): UpdateRequest {
-        val template = ParameterizedSparqlString("DELETE WHERE { ?s ?p ?o }")
-        template.setIri("s", objectUri)
-        template.setIri("p", propertyUri)
         return template.asUpdate()
     }
 }

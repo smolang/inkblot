@@ -522,15 +522,18 @@ class SemanticObjectGenerator(
     }
 
     private fun imports(): String {
-        return """
-            import net.rec0de.inkblot.runtime.*
-            import org.apache.jena.query.ParameterizedSparqlString
-            import org.apache.jena.query.QuerySolution
-            import org.apache.jena.rdf.model.ResourceFactory
-            import org.apache.jena.datatypes.xsd.XSDDatatype
-            import java.math.BigDecimal
-            import java.math.BigInteger
-        """.trimIndent()
+        val imports = mutableListOf(
+            "net.rec0de.inkblot.runtime.*",
+            "org.apache.jena.query.ParameterizedSparqlString",
+            "org.apache.jena.query.QuerySolution",
+            "org.apache.jena.rdf.model.ResourceFactory",
+            "org.apache.jena.datatypes.xsd.XSDDatatype"
+        )
+        if(variableInfo.values.any { it.kotlinType == "BigInteger"})
+            imports.add("import java.math.BigInteger")
+        if(variableInfo.values.any { it.kotlinType == "BigDecimal"})
+            imports.add("import java.math.BigDecimal")
+        return imports.joinToString("\n"){ "import $it" }
     }
 
     private fun pkg() = "package $pkg\n"

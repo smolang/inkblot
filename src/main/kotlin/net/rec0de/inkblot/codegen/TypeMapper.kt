@@ -1,4 +1,4 @@
-package inkblot.codegen
+package net.rec0de.inkblot.codegen
 
 object TypeMapper {
 

@@ -1,6 +1,6 @@
-package inkblot.codegen
+package net.rec0de.inkblot.codegen
 
-import inkblot.reasoning.VariableProperties
+import net.rec0de.inkblot.reasoning.VariableProperties
 import org.apache.jena.query.Query
 import java.nio.file.Path
 

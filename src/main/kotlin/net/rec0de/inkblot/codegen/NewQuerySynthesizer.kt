@@ -1,8 +1,8 @@
-package inkblot.codegen
+package net.rec0de.inkblot.codegen
 
-import inkblot.reasoning.VarDependency
-import inkblot.reasoning.VariablePathAnalysis
-import inkblot.reasoning.VariableProperties
+import net.rec0de.inkblot.reasoning.VarDependency
+import net.rec0de.inkblot.reasoning.VariablePathAnalysis
+import net.rec0de.inkblot.reasoning.VariableProperties
 
 class NewQuerySynthesizer(anchor: String, vars: Map<String, VariableProperties>, paths: VariablePathAnalysis, queryMap: MutableMap<String, String>): AbstractQuerySynthesizer(anchor, vars, paths, queryMap) {
     override fun synthBaseCreationUpdate(): String {

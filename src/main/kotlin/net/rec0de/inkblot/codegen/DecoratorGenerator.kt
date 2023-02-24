@@ -1,9 +1,8 @@
-package inkblot.codegen
+package net.rec0de.inkblot.codegen
 
-import inkblot.reasoning.VariableProperties
+import net.rec0de.inkblot.reasoning.VariableProperties
 import java.io.File
 import java.nio.file.Path
-import kotlin.io.path.Path
 
 class DecoratorGenerator(
     private val className: String,

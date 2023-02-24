@@ -1,9 +1,9 @@
-package inkblot.codegen
+package net.rec0de.inkblot.codegen
 
-import inkblot.reasoning.VarDepEdge
-import inkblot.reasoning.VariablePathAnalysis
-import inkblot.reasoning.VariableProperties
-import inkblot.runtime.Inkblot
+import net.rec0de.inkblot.reasoning.VarDepEdge
+import net.rec0de.inkblot.reasoning.VariablePathAnalysis
+import net.rec0de.inkblot.reasoning.VariableProperties
+import net.rec0de.inkblot.runtime.Inkblot
 import java.io.File
 import java.nio.file.Path
 

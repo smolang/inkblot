@@ -1,6 +1,6 @@
-package inkblot.reasoning
+package net.rec0de.inkblot.reasoning
 
-import inkblot.codegen.PropertyConfig
+import net.rec0de.inkblot.codegen.PropertyConfig
 import org.apache.jena.query.ParameterizedSparqlString
 import org.apache.jena.query.Query
 import org.apache.jena.query.QuerySolution
@@ -25,7 +25,8 @@ class ForbiddenMagicAnalysis(private val endpoint: String) {
         val visitor = DependencyPathVisitor()
         query.queryPattern.visit(visitor)
 
-        val dependencyPaths = VariableDependencePaths.variableDependencyPaths(anchor, vars, visitor.variableDependencies)
+        val dependencyPaths =
+            VariableDependencePaths.variableDependencyPaths(anchor, vars, visitor.variableDependencies)
         dependencyPaths.forEach { (k, v) ->
             if(v.isEmpty())
                 throw Exception("Unable to derive dependency path from ?$anchor to ?$k")

@@ -1,4 +1,4 @@
-package inkblot.runtime
+package net.rec0de.inkblot.runtime
 
 import org.apache.jena.query.*
 import org.apache.jena.sparql.exec.http.QueryExecutionHTTP
@@ -6,9 +6,23 @@ import org.apache.jena.sparql.syntax.ElementFilter
 import org.apache.jena.sparql.syntax.ElementGroup
 import org.apache.jena.sparql.util.ExprUtils
 
-abstract class SemanticObjectFactory<Obj> {
+abstract class SemanticObjectFactory<Obj>(private val validateQuery: String, private val debugName: String) {
     protected abstract val anchor: String
     protected abstract val query: ParameterizedSparqlString
+
+    init {
+        validateOnlineData()
+    }
+
+    fun validateOnlineData() {
+        // Run validation query to check that our assumptions about types / multiplicities match reality
+        val q = QueryFactory.create(validateQuery)
+        println("Running validation query for $debugName")
+        val execCtx = QueryExecutionHTTP.service(Inkblot.endpoint, q)
+        val res = execCtx.execSelect()
+        if(res.hasNext())
+            throw Exception("Validation query failed for $debugName, data at endpoint looks inconsistent. Query: $validateQuery")
+    }
 
     fun loadFromURI(uri: String): Obj {
         if(Inkblot.loadedObjects.containsKey(uri))

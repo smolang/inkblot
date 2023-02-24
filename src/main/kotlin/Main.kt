@@ -5,12 +5,12 @@ import com.github.ajalt.clikt.parameters.arguments.multiple
 import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.option
-import inkblot.codegen.*
-import inkblot.reasoning.VariablePathAnalysis
-import inkblot.reasoning.VariableProperties
+import net.rec0de.inkblot.reasoning.VariablePathAnalysis
+import net.rec0de.inkblot.reasoning.VariableProperties
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import net.rec0de.inkblot.codegen.*
 import org.apache.jena.query.ParameterizedSparqlString
 import java.io.File
 import kotlin.io.path.Path
@@ -84,6 +84,11 @@ class Generate: CliktCommand(help="Generate library classes from a configuration
 
             // SHACL constraints
             ShaclGenerator.generateToFilesInPath(path, classConfig.type, className, variableInfo.values, paths)
+
+            // Validating SPARQL
+            println("Type-Validating SPARQL:")
+            val vq = ValidatingSparqlGenerator.validatorQueryFor(classConfig.query, variableInfo.values)
+            println(vq)
 
             // Collect generated SPARQL to create override file
             queryMaps[className] = synthesizer.effectiveQueries

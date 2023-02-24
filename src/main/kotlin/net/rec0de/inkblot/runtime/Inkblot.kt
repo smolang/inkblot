@@ -1,4 +1,4 @@
-package inkblot.runtime
+package net.rec0de.inkblot.runtime
 
 import org.apache.jena.graph.Node
 import org.apache.jena.query.ParameterizedSparqlString

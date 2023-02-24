@@ -1,7 +1,5 @@
-package inkblot.reasoning
+package net.rec0de.inkblot.reasoning
 
-import org.apache.jena.graph.Node
-import org.apache.jena.graph.NodeFactory
 import org.apache.jena.query.Query
 
 class VariablePathAnalysis(query: Query, val anchor: String) {
@@ -23,11 +21,16 @@ class VariablePathAnalysis(query: Query, val anchor: String) {
         optionalContextsByVariable = visitor.variablesInOptionalContexts.groupBy { it.first }.mapValues { (_, v) -> v.map { it.second } }
         checkConflictingBindings()
 
-        dependencyPaths = VariableDependencePaths.variableDependencyPaths(anchor, resultVars, visitor.variableDependencies)
+        dependencyPaths =
+            VariableDependencePaths.variableDependencyPaths(anchor, resultVars, visitor.variableDependencies)
 
         analyzePaths()
 
-        concreteLeafPaths = VariableDependencePaths.variableDependencyPaths(anchor, visitor.concreteLeaves, visitor.variableDependencies)
+        concreteLeafPaths = VariableDependencePaths.variableDependencyPaths(
+            anchor,
+            visitor.concreteLeaves,
+            visitor.variableDependencies
+        )
     }
 
     val queryContainsFilter: Boolean

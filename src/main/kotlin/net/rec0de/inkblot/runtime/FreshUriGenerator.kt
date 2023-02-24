@@ -1,4 +1,4 @@
-package inkblot.runtime
+package net.rec0de.inkblot.runtime
 
 import org.apache.commons.codec.binary.Base32
 import kotlin.random.Random

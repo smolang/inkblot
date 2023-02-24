@@ -1,6 +1,6 @@
-package inkblot.codegen
+package net.rec0de.inkblot.codegen
 
-import inkblot.reasoning.ForbiddenMagicAnalysis
+import net.rec0de.inkblot.reasoning.ForbiddenMagicAnalysis
 import org.apache.jena.query.Query
 
 object ConfigGenerator {

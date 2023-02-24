@@ -1,6 +1,6 @@
-package inkblot.codegen
+package net.rec0de.inkblot.codegen
 
-import inkblot.reasoning.VariableProperties
+import net.rec0de.inkblot.reasoning.VariableProperties
 import org.apache.jena.query.Query
 import java.io.File
 import java.nio.file.Path
@@ -43,8 +43,9 @@ class SemanticObjectGenerator(
     override fun genBoilerplate() = pkg() + "\n" + imports() + "\n"
 
     override fun genFactory(): String {
+        val validateQuery = escape(prettifySparql(ValidatingSparqlGenerator.validatorQueryFor(stringQuery, variableInfo.values)))
         return """
-        object ${className}Factory : SemanticObjectFactory<$className>() {
+        object ${className}Factory : SemanticObjectFactory<$className>("$validateQuery", "$className") {
             override val anchor = "$anchor"
             override val query = ParameterizedSparqlString("${escape(stringQuery)}")
             ${indent(genInitializerQueries(), 3)}
@@ -193,8 +194,19 @@ class SemanticObjectGenerator(
             when {
                 (props.isObjectReference || props.xsdType == "inkblot:rawObjectReference") && props.nullable -> "val ${props.targetName} = lines.first().getResource(\"$sparql\")?.uri"
                 (props.isObjectReference || props.xsdType == "inkblot:rawObjectReference") -> "val ${props.targetName} = lines.first().getResource(\"$sparql\").uri"
-                props.nullable -> "val ${props.targetName} = ${TypeMapper.literalToType("lines.first().getLiteral(\"$sparql\")", props.kotlinType, true)}"
-                else -> "val ${props.targetName} = ${TypeMapper.literalToType("lines.first().getLiteral(\"$sparql\")", props.kotlinType)}"
+                props.nullable -> "val ${props.targetName} = ${
+                    TypeMapper.literalToType(
+                        "lines.first().getLiteral(\"$sparql\")",
+                        props.kotlinType,
+                        true
+                    )
+                }"
+                else -> "val ${props.targetName} = ${
+                    TypeMapper.literalToType(
+                        "lines.first().getLiteral(\"$sparql\")",
+                        props.kotlinType
+                    )
+                }"
             }
         }.values.joinToString("\n")
 
@@ -211,7 +223,13 @@ class SemanticObjectGenerator(
             if(props.isObjectReference || props.xsdType == "inkblot:rawObjectReference")
                 "val ${props.targetName} = lines.mapNotNull { it.getResource(\"$sparql\")?.uri }.distinct()"
             else
-                "val ${props.targetName} = lines.mapNotNull { ${TypeMapper.literalToType("it.getLiteral(\"$sparql\")", props.kotlinType, true)} }.distinct()"
+                "val ${props.targetName} = lines.mapNotNull { ${
+                    TypeMapper.literalToType(
+                        "it.getLiteral(\"$sparql\")",
+                        props.kotlinType,
+                        true
+                    )
+                } }.distinct()"
         }.values.joinToString("\n")
 
         return "\n// for higher cardinality properties, we have to collect all distinct values\n$assignments\n"
@@ -505,7 +523,7 @@ class SemanticObjectGenerator(
 
     private fun imports(): String {
         return """
-            import inkblot.runtime.*
+            import net.rec0de.inkblot.runtime.*
             import org.apache.jena.query.ParameterizedSparqlString
             import org.apache.jena.query.QuerySolution
             import org.apache.jena.rdf.model.ResourceFactory

@@ -1,4 +1,4 @@
-package inkblot.reasoning
+package net.rec0de.inkblot.reasoning
 
 import org.apache.jena.graph.Node
 

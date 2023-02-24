@@ -1,8 +1,8 @@
-package inkblot.codegen
+package net.rec0de.inkblot.codegen
 
-import inkblot.reasoning.VarDepEdge
-import inkblot.reasoning.VariablePathAnalysis
-import inkblot.reasoning.VariableProperties
+import net.rec0de.inkblot.reasoning.VarDepEdge
+import net.rec0de.inkblot.reasoning.VariablePathAnalysis
+import net.rec0de.inkblot.reasoning.VariableProperties
 
 class QuerySynthesizer(
     anchor: String,

@@ -74,7 +74,7 @@ class NewQuerySynthesizer(anchor: String, vars: Map<String, VariableProperties>,
                 sourceNode.isVariable && sourceNode.name == anchor -> "?anchor"
                 sourceNode.isVariable -> {
                     requiredVarBindings.add(sourceNode.name)
-                    "?${sourceNode.name}"
+                    rewriteAnonymousVariableNames(sourceNode.name)
                 }
                 else -> throw Exception("Unknown Node type in $edge")
             }
@@ -151,7 +151,7 @@ class NewQuerySynthesizer(anchor: String, vars: Map<String, VariableProperties>,
                 else if(it.s == anchor)
                     "?anchor"
                 else if (assignableVars.containsKey(it.s))
-                    "?${assignableVars[it.s]}"
+                    rewriteAnonymousVariableNames(assignableVars[it.s]!!)
                 else {
                     if(blankNodeMap.containsKey(it.s))
                         blankNodeMap[it.s]!!
@@ -170,7 +170,7 @@ class NewQuerySynthesizer(anchor: String, vars: Map<String, VariableProperties>,
                 else if(it.o == anchor)
                     "?anchor"
                 else if(assignableVars.containsKey(it.o))
-                    "?${assignableVars[it.o]}"
+                    rewriteAnonymousVariableNames(assignableVars[it.o]!!)
                 else {
                     if(blankNodeMap.containsKey(it.o))
                         blankNodeMap[it.o]!!
@@ -192,5 +192,12 @@ class NewQuerySynthesizer(anchor: String, vars: Map<String, VariableProperties>,
             else
                 "GRAPH <$graph> { $block }"
         }.joinToString(" ")
+    }
+
+    private fun rewriteAnonymousVariableNames(v: String): String {
+        return if(v.startsWith("?"))
+                "?inkblt${v.removePrefix("?")}"
+            else
+                "?$v"
     }
 }

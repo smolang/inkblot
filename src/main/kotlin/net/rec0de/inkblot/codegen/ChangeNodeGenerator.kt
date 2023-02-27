@@ -38,7 +38,7 @@ class ChangeNodeGenerator(private val synthesizer: AbstractQuerySynthesizer) {
             """
                 val template = ParameterizedSparqlString("${escape(synthesizer.addUpdate(sparqlVariable))}")
                 template.setIri("anchor", $anchorUriVar)
-                template.setParam("o", $valueExpr)
+                template.setParam("n", $valueExpr)
                 val cn = ComplexPropertyAdd(template.asUpdate())
             """.trimIndent()
         }

@@ -29,11 +29,12 @@ object Inkblot {
         changelog.forEach { chg ->
             chg.asUpdate().forEach { update.add(it) }
         }
+        changelog.clear()
 
         val builder = UpdateExecHTTPBuilder.create()
         builder.endpoint(endpoint)
         builder.update(update)
-        println(update.toString())
+        //println(update.toString())
         builder.execute()
 
         dirtySet.forEach { it.markCommitted() }
@@ -45,6 +46,8 @@ object Inkblot {
     fun violation(violation: ConstraintViolation) = violationListeners.forEach { it.handleViolation(violation) }
 
     fun freshSuffixFor(context: String) = idgen.freshSuffixFor(context)
+
+    fun forceInit() = {}
 }
 
 interface ChangeNode {

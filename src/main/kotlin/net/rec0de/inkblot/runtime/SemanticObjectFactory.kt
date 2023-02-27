@@ -13,6 +13,7 @@ abstract class SemanticObjectFactory<Obj>(validateQuery: String, private val deb
     private val validatingQueries: MutableList<Query>
 
     init {
+        Inkblot.forceInit()
         validatingQueries = mutableListOf(QueryFactory.create(validateQuery))
         validateOnlineData(exceptionOnFailure = true)
     }
@@ -48,13 +49,10 @@ abstract class SemanticObjectFactory<Obj>(validateQuery: String, private val deb
         if(Inkblot.loadedObjects.containsKey(uri))
             return Inkblot.loadedObjects[uri] as Obj
 
-        val template = query.copy()
-        template.setIri(anchor, uri)
-        // we have to get rid of the raw URI in the select clause
-        val queryString = template.toString().replaceFirst("<$uri>", "")
+        val template = query.toString()
+        // insert appropriate binding of anchor variable
+        val queryString = template.replaceFirst("{", "{ BIND(<$uri> AS ?$anchor) ")
         val q = QueryFactory.create(queryString)
-
-        println(q)
         val execCtx = QueryExecutionHTTP.service(Inkblot.endpoint, q)
         val res = execCtx.execSelect()
 

@@ -1,111 +1,203 @@
 package net.rec0de.inkblot.codegen
 
-import net.rec0de.inkblot.reasoning.VarDepEdge
+import net.rec0de.inkblot.reasoning.VarDependency
 import net.rec0de.inkblot.reasoning.VariablePathAnalysis
 import net.rec0de.inkblot.reasoning.VariableProperties
 
-class QuerySynthesizer(
-    anchor: String,
-    variableInfo: Map<String, VariableProperties>,
-    paths: VariablePathAnalysis,
-    queryMap: MutableMap<String, String>
-): AbstractQuerySynthesizer(anchor, variableInfo, paths, queryMap) {
+class QuerySynthesizer(anchor: String, vars: Map<String, VariableProperties>, paths: VariablePathAnalysis, queryMap: MutableMap<String, String>): AbstractQuerySynthesizer(anchor, vars, paths, queryMap) {
     override fun synthBaseCreationUpdate(): String {
-        val concreteLeaves = paths.concreteLeaves()
-        val safeInitVars = variableInfo.filterValues{ it.functional && !it.nullable }.keys
+        // check that we have constructor values for all requires sparql variables
+        val assignableVars = variableInfo.filterValues{ it.functional && !it.nullable }.keys
+        val requiredResultSetVars = paths.resultVars.intersect(paths.safeVariables()) - anchor
 
-        val variableInitializers = safeInitVars.map {v ->
-            paths.pathsToVariable(v).joinToString(" ") { pathToSparqlSelect(it, "?$v")}
-        }.joinToString(" ")
+        val unboundRequired = requiredResultSetVars.minus(assignableVars)
+        if(unboundRequired.isNotEmpty())
+            throw Exception("SPARQL variables ${unboundRequired.joinToString(", ")} are not optional but considered optional according to configured multiplicity")
 
-        val safePathsToConcrete = concreteLeaves.map{ paths.pathsToConcrete(it) }.flatten().filter { path -> path.all{ !it.dependency.optional } }
-        val concreteInitializers = safePathsToConcrete.joinToString(" "){ pathToSparqlSelect(it, null) }
+        val boundButOptional = assignableVars.minus(requiredResultSetVars)
+        if(boundButOptional.isNotEmpty())
+            throw Exception("SPARQL variables ${boundButOptional.joinToString(", ")} are optional in SPARQL but not considered optional according to configured multiplicity")
 
-        return "INSERT DATA { $variableInitializers $concreteInitializers }"
+
+        // gather all edges that are required / non-optional, rendering variables we have constructor values for using their names and everything else as blank nodes
+        val requiredEdges = bindingsFor(setOf(anchor), "")
+        val insertStatements = renderEdgeSet(requiredEdges, assignableVars.associateWith { it })
+
+        return "INSERT DATA { $insertStatements }"
     }
 
+    // TODO: can we replace most of this with an invocation to bindingsFor?
     override fun synthInitializerUpdate(v: String): String {
-        val insertSentences = paths.pathsToVariable(v).joinToString(" ") {
-            pathToSparqlSelect(it, "?v")
+        // v is safe in all contexts that have the bindingContext as a prefix
+        // edges from parent contexts of the binding context are safe
+        val bindingContext = paths.definingContextForVariable(v)
+
+        // all paths to v that are safe in this context
+        val requiredPaths = paths.pathsToVariable(v).filter { path -> path.all { bindingContext.startsWith(it.dependency.optionalContexts) } }
+
+        // create concrete leaved paths that intersect with this property and are (newly) safe in this context
+        val requiredConcreteLeavedPaths = paths.concreteLeaves().flatMap { paths.pathsToConcrete(it) }.filter { path ->
+            path.any { it.dependency.optional } && path.all { bindingContext.startsWith(it.dependency.optionalContexts) } && requiredPaths.any{ pPath -> pPath.toSet().intersect(path.toSet()).isNotEmpty() }
         }
-        return "INSERT DATA { $insertSentences }"
+
+        //println("Newly safe concrete leaved paths for $v: $requiredConcreteLeavedPaths")
+
+        // maybe we'll worry about variable-leaved paths here at some point
+        // TODO
+
+        val varEdges = requiredPaths.flatten().map{ it.dependency }.toSet()
+        val conEdges = requiredConcreteLeavedPaths.flatten().map{ it.dependency }.toSet()
+        val requiredEdges = varEdges + conEdges
+
+        // recursively expand using edges considered safe not already in edge set
+        // provide copy of select query in where clause to provide variable bindings?
+        val insertStatements = renderEdgeSet(requiredEdges, mapOf(v to "v"))
+        return "INSERT DATA { $insertStatements }"
     }
 
-    override fun synthChangeUpdate(v: String): String {
-        val varPaths = paths.pathsToVariable(v)
+    private fun genericUpdate(v: String, delete: Boolean, insert: Boolean): String {
         val deleteSentences = mutableListOf<String>()
         val insertSentences = mutableListOf<String>()
-        val whereSentences = mutableListOf<String>()
+        val requiredVarBindings = mutableSetOf<String>()
+        val lastEdges = mutableSetOf<VarDependency>()
 
-        varPaths.forEach { path ->
-            val lastEdge = path.last()
-            val lastEdgeUri = lastEdge.dependency.p
-            val lastNodeVar = if(path.size == 1) "?anchor" else "?${lastEdge.source}"
-            deleteSentences.add(tripleInGraph(lastNodeVar, lastEdgeUri, "?o", lastEdge.backward, lastEdge.dependency.inGraph))
-            insertSentences.add(tripleInGraph(lastNodeVar, lastEdgeUri, "?n", lastEdge.backward, lastEdge.dependency.inGraph))
-            if(path.size > 1)
-                whereSentences.add(pathToSparqlSelect(path.dropLast(1), lastNodeVar))
+        val lastEdgesOnPaths = paths.pathsToVariable(v).map { it.last().dependency }
+
+        val neighborhood = paths.edgesFor(v)
+        neighborhood.forEach { edge ->
+            val backwards = edge.s == v
+            val sourceNode = if(backwards) edge.oNode else edge.sNode
+
+            val source = when {
+                sourceNode.isURI -> "<${sourceNode.uri}>"
+                sourceNode.isLiteral -> "\"${sourceNode.literal}\""
+                sourceNode.isVariable && sourceNode.name == anchor -> "?anchor"
+                sourceNode.isVariable -> {
+                    requiredVarBindings.add(sourceNode.name)
+                    rewriteAnonymousVariableNames(sourceNode.name)
+                }
+                else -> throw Exception("Unknown Node type in $edge")
+            }
+
+            // when deleting, we only want to delete what's absolutely necessary, e.g. leaving type labels of removed nodes intact
+            if(lastEdgesOnPaths.contains(edge)) {
+                deleteSentences.add(tripleInGraph(source, edge.p, "?o", backwards, edge.inGraph))
+                lastEdges.add(edge)
+            }
+            insertSentences.add(tripleInGraph(source, edge.p, "?n", backwards, edge.inGraph))
         }
 
-        return "DELETE { ${deleteSentences.joinToString(" ") } } INSERT { ${insertSentences.joinToString(" ")}} WHERE { ${whereSentences.joinToString(" ")} }"
+        val ctx = paths.definingContextForVariable(v)
+        // in the pure insertion case we cannot include full bindings in the where clause because those structures might not be there yet
+        val bindings = if(insert && !delete) bindingsFor(requiredVarBindings, ctx).minus(lastEdges) else bindingsFor(requiredVarBindings, ctx)
+        val whereSentences = renderEdgeSet(bindings, requiredVarBindings.associateWith { it })
+
+        if(!delete && !insert)
+            throw Exception("Not inserting anything and not deleting anything is probably unintentional")
+
+        var stmt = ""
+        if(delete)
+            stmt += "DELETE { ${deleteSentences.joinToString(" ")} } "
+        if(insert)
+            stmt += "INSERT { ${insertSentences.joinToString(" ")} } "
+        stmt += "WHERE { $whereSentences }"
+
+        return stmt
     }
 
-    override fun synthAddUpdate(v: String) = verbLastEdgeWherePath("INSERT", v)
+    override fun synthChangeUpdate(v: String) = genericUpdate(v, delete = true, insert = true)
 
-    override fun synthRemoveUpdate(v: String) = verbLastEdgeWherePath("DELETE", v)
+    override fun synthAddUpdate(v: String) = genericUpdate(v, delete = false, insert = true)
 
-    private fun verbLastEdgeWherePath(verb: String, v: String): String {
-        val varPaths = paths.pathsToVariable(v)
-        val verbSentences = mutableListOf<String>()
-        val whereSentences = mutableListOf<String>()
+    override fun synthRemoveUpdate(v: String) = genericUpdate(v, delete = true, insert = false)
 
-        varPaths.forEach { path ->
-            val lastEdge = path.last()
-            val lastEdgeUri = lastEdge.dependency.p
-            val lastNodeVar = if(path.size == 1) "?anchor" else "?${lastEdge.source}"
-            verbSentences.add(tripleInGraph(lastNodeVar, lastEdgeUri, "?o", lastEdge.backward, lastEdge.dependency.inGraph))
+    private fun bindingsFor(vars: Set<String>, optionalCtx: String): Set<VarDependency> {
+        val toBind = vars.toMutableSet()
+        val bound = mutableSetOf<String>()
+        val bindings = mutableSetOf<VarDependency>()
 
-            if(path.size > 1)
-                whereSentences.add(pathToSparqlSelect(path.dropLast(1), lastNodeVar))
+        while (toBind.isNotEmpty()) {
+            val v = toBind.first()
+            toBind.remove(v)
+            bound.add(v)
+
+            val edges = paths.edgesFor(v).filter { optionalCtx.startsWith(it.optionalContexts) }
+            bindings.addAll(edges)
+            val newVars = edges.flatMap {
+                if(it.oNode.isVariable && it.sNode.isVariable)
+                    listOf(it.o, it.s)
+                else if(it.oNode.isVariable)
+                    listOf(it.o)
+                else if(it.sNode.isVariable)
+                    listOf(it.s)
+                else emptyList()
+            }.toSet().minus(bound).filter { it != anchor }
+            toBind.addAll(newVars)
         }
 
-        val data = if(whereSentences.isEmpty()) " DATA" else ""
-        val verbSection = "$verb$data { ${verbSentences.joinToString(" ")} } "
-        val whereSection = if(whereSentences.isNotEmpty()) "WHERE { ${whereSentences.joinToString(" ")} }" else ""
-
-        return verbSection + whereSection
+        return bindings
     }
 
-    private fun pathToSparqlSelect(path: List<VarDepEdge>, lastNodeVar: String?) : String {
-        // nicer rendering for easy paths (no backward edges, all in the same graph)
-        return if(path.isEmpty())
-            throw Exception("cannot convert empty path to sparql")
-        /*else if(path.all { !it.backward } && path.map{ it.dependency.inGraph }.distinct().size == 1) {
-            // we have established that there is only one distinct graph, so we can use the first one
-            val graph = path.first().dependency.inGraph
-            val closingBrackets = "]".repeat(path.size-1)
-            val basePath = "?anchor " + path.joinToString(" [") { "<${it.dependency.p}>" } + " ${lastNodeVar ?: ("<" + path.last().dependency.o + ">")}$closingBrackets."
+    private fun renderEdgeSet(edgeSet: Set<VarDependency>, assignableVars: Map<String,String>): String {
+        // variable to blank node mapping
+        var blankNodeCounter = 0
+        val blankNodeMap = mutableMapOf<String, String>()
 
-            if(graph == null)
-                basePath
+        // collect by graph name and render into one block of triples per graph
+        val byGraph = edgeSet.groupBy { it.inGraph ?: "inkblot:default" }.mapValues { (_, edges) ->
+            edges.joinToString(" ") {
+                val s = if(it.sNode.isURI)
+                    "<${it.s}>"
+                else if(it.s == anchor)
+                    "?anchor"
+                else if (assignableVars.containsKey(it.s))
+                    rewriteAnonymousVariableNames(assignableVars[it.s]!!)
+                else {
+                    if(blankNodeMap.containsKey(it.s))
+                        blankNodeMap[it.s]!!
+                    else {
+                        val bnode = "_:b$blankNodeCounter"
+                        blankNodeCounter += 1
+                        blankNodeMap[it.s] = bnode
+                        bnode
+                    }
+                }
+
+                val o = if(it.oNode.isURI)
+                    "<${it.o}>"
+                else if(it.oNode.isLiteral)
+                    "\"${it.o}\""
+                else if(it.o == anchor)
+                    "?anchor"
+                else if(assignableVars.containsKey(it.o))
+                    rewriteAnonymousVariableNames(assignableVars[it.o]!!)
+                else {
+                    if(blankNodeMap.containsKey(it.o))
+                        blankNodeMap[it.o]!!
+                    else {
+                        val bnode = "_:b$blankNodeCounter"
+                        blankNodeCounter += 1
+                        blankNodeMap[it.o] = bnode
+                        bnode
+                    }
+                }
+
+                "$s <${it.p}> $o."
+            }
+        }
+
+        return byGraph.map { (graph, block) ->
+            if(graph == "inkblot:default")
+                block
             else
-                "GRAPH <$graph> { $basePath }"
-        }*/
-        // ugly but more generic rendering
-        else {
-            val anchor = if(path.first().backward) path.first().dependency.o else path.first().dependency.s
-            val last = if(path.last().backward) path.last().dependency.s else path.last().dependency.o
+                "GRAPH <$graph> { $block }"
+        }.joinToString(" ")
+    }
 
-            val varMapping = path.flatMap { listOf(it.dependency.s, it.dependency.o) }.distinct().associateWith { "?$it" }.toMutableMap()
-            varMapping[anchor] = "?anchor"
-            varMapping[last] = lastNodeVar ?: "<$last>"
-
-            // this will wrap every triple in its own graph block, which is incredibly ugly but should work
-            return path.map {
-                val s = varMapping[it.dependency.s]!!
-                val o = varMapping[it.dependency.o]!!
-                tripleInGraph(s, it.dependency.p, o, false, it.dependency.inGraph)
-            }.joinToString(" ")
-        }
+    private fun rewriteAnonymousVariableNames(v: String): String {
+        return if(v.startsWith("?"))
+                "?inkblt${v.removePrefix("?")}"
+            else
+                "?$v"
     }
 }

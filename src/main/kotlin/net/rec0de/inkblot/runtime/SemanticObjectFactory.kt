@@ -89,8 +89,8 @@ abstract class SemanticObjectFactory<Obj>(validateQueries: List<String>, private
         val grouped = res.asSequence().groupBy { it.getResource(anchor).uri }
         res.close()
         val uris = grouped.keys
-        val created = grouped.filter { !Inkblot.loadedObjects.containsKey(it.key) }.values.map { instantiateSingleResult(it)!! }  // entity groups are never empty here, non-null assert is fine
         val previouslyLoaded = uris.filter { Inkblot.loadedObjects.containsKey(it) }.map { Inkblot.loadedObjects[it]!! as Obj }
+        val created = grouped.filter { !Inkblot.loadedObjects.containsKey(it.key) }.values.map { instantiateSingleResult(it)!! }  // entity groups are never empty here, non-null assert is fine
 
         return previouslyLoaded + created
     }

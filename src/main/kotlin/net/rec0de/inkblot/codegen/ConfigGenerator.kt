@@ -27,7 +27,10 @@ object ConfigGenerator {
 fun prettifySparql(query: Query): String {
     val singleLine = query.toString().replace("\n", " ")
     // trim excessive spacing & indentation
-    val despaced = singleLine.replace(Regex("\\s+"), " ")
-    // replace spaces in front of ; and . as well as at start and end of query
-    return despaced.replace(Regex("\\s([;\\.])")) { match -> match.groupValues[1] }.trim()
+    var despaced = singleLine.replace(Regex("\\s+"), " ")
+    // replace spaces in front of ; . and ) as well as at start and end of query
+    despaced = despaced.replace(Regex("\\s([;\\.\\)])")) { match -> match.groupValues[1] }.trim()
+    // replace spaces following (
+    despaced = despaced.replace(Regex("\\(\\s+"), "(")
+    return despaced
 }

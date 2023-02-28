@@ -5,6 +5,7 @@ import net.rec0de.inkblot.reasoning.VariableProperties
 
 abstract class AbstractQuerySynthesizer(
     val anchor: String,
+    protected val classTypeUri: String,
     protected val variableInfo: Map<String, VariableProperties>,
     protected val paths: VariablePathAnalysis,
     private val overrideMap: MutableMap<String, String>
@@ -103,6 +104,9 @@ abstract class AbstractQuerySynthesizer(
     abstract fun synthAddUpdate(v: String): String
 
     abstract fun synthRemoveUpdate(v: String): String
+
+    // only used for validating SPARQL generation, not actual data access
+    abstract fun synthFunctionalValidationQuery(v: String): String
 
     protected fun tripleInGraph(s: String, p: String, o: String, inverse: Boolean, graph: String?): String {
         val triple = if(inverse) "$o <$p> $s." else "$s <$p> $o."

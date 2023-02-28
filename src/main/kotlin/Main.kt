@@ -11,6 +11,7 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import net.rec0de.inkblot.codegen.*
+import net.rec0de.inkblot.runtime.Inkblot
 import org.apache.jena.query.ParameterizedSparqlString
 import java.io.File
 import kotlin.io.path.Path
@@ -70,7 +71,7 @@ class Generate: CliktCommand(help="Generate library classes from a configuration
             val query = ParameterizedSparqlString(classConfig.query).asQuery()
             val paths = VariablePathAnalysis(query, classConfig.anchor)
             // use override query lists with synthesizer if we have override info for that class, otherwise use empty mapping
-            val synthesizer = NewQuerySynthesizer(classConfig.anchor, variableInfo, paths, queryMaps.getOrDefault(className, emptyMap()).toMutableMap())
+            val synthesizer = QuerySynthesizer(classConfig.anchor, classConfig.type, variableInfo, paths, queryMaps.getOrDefault(className, emptyMap()).toMutableMap())
 
             when(backend) {
                 "kotlin" -> {
@@ -84,11 +85,6 @@ class Generate: CliktCommand(help="Generate library classes from a configuration
 
             // SHACL constraints
             ShaclGenerator.generateToFilesInPath(path, classConfig.type, className, variableInfo.values, paths)
-
-            // Validating SPARQL
-            println("Type-Validating SPARQL:")
-            val vq = ValidatingSparqlGenerator.validatorQueryFor(classConfig.query, variableInfo.values)
-            println(vq)
 
             // Collect generated SPARQL to create override file
             queryMaps[className] = synthesizer.effectiveQueries
@@ -130,7 +126,6 @@ class Configure: CliktCommand(help="Generate a placeholder configuration file fr
 
 class Playground: CliktCommand(help="Execute playground environment") {
     override fun run() {
-        org.apache.jena.query.ARQ.init()
 
     }
 }

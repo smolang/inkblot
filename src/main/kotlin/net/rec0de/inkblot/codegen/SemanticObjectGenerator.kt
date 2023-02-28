@@ -43,9 +43,16 @@ class SemanticObjectGenerator(
     override fun genBoilerplate() = pkg() + "\n" + imports() + "\n"
 
     override fun genFactory(): String {
-        val validateQuery = escape(prettifySparql(ValidatingSparqlGenerator.validatorQueryFor(stringQuery, variableInfo.values)))
+        val validateQueries = ValidatingSparqlGenerator.validatorQueriesFor(stringQuery, synthesizer, variableInfo.values).map {
+            escape(prettifySparql(it))
+        }.joinToString(",\n") { "\"$it\"" }
         return """
-        object ${className}Factory : SemanticObjectFactory<$className>("$validateQuery", "$className") {
+        object ${className}Factory : SemanticObjectFactory<$className>(
+            listOf(
+                ${indent(validateQueries, 4)}
+            ),
+            "$className"
+        ) {
             override val anchor = "$anchor"
             override val query = ParameterizedSparqlString("${escape(stringQuery)}")
             ${indent(genInitializerQueries(), 3)}

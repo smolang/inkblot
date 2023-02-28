@@ -4,7 +4,11 @@ import net.rec0de.inkblot.reasoning.VarDependency
 import net.rec0de.inkblot.reasoning.VariablePathAnalysis
 import net.rec0de.inkblot.reasoning.VariableProperties
 
-class QuerySynthesizer(anchor: String, vars: Map<String, VariableProperties>, paths: VariablePathAnalysis, queryMap: MutableMap<String, String>): AbstractQuerySynthesizer(anchor, vars, paths, queryMap) {
+class QuerySynthesizer(anchor: String, classTypeUri: String, vars: Map<String, VariableProperties>, paths: VariablePathAnalysis, queryMap: MutableMap<String, String>): AbstractQuerySynthesizer(anchor, classTypeUri, vars, paths, queryMap) {
+
+    // persist blank node counter across calls to make property functionality checks easier
+    private var blankNodeCounter = 0
+
     override fun synthBaseCreationUpdate(): String {
         // check that we have constructor values for all requires sparql variables
         val assignableVars = variableInfo.filterValues{ it.functional && !it.nullable }.keys
@@ -59,7 +63,7 @@ class QuerySynthesizer(anchor: String, vars: Map<String, VariableProperties>, pa
         val deleteSentences = mutableListOf<String>()
         val insertSentences = mutableListOf<String>()
         val requiredVarBindings = mutableSetOf<String>()
-        val lastEdges = mutableSetOf<VarDependency>()
+        mutableSetOf<VarDependency>()
 
         val lastEdgesOnPaths = paths.pathsToVariable(v).map { it.last().dependency }
 
@@ -82,14 +86,13 @@ class QuerySynthesizer(anchor: String, vars: Map<String, VariableProperties>, pa
             // when deleting, we only want to delete what's absolutely necessary, e.g. leaving type labels of removed nodes intact
             if(lastEdgesOnPaths.contains(edge)) {
                 deleteSentences.add(tripleInGraph(source, edge.p, "?o", backwards, edge.inGraph))
-                lastEdges.add(edge)
             }
             insertSentences.add(tripleInGraph(source, edge.p, "?n", backwards, edge.inGraph))
         }
 
         val ctx = paths.definingContextForVariable(v)
         // in the pure insertion case we cannot include full bindings in the where clause because those structures might not be there yet
-        val bindings = if(insert && !delete) bindingsFor(requiredVarBindings, ctx).minus(lastEdges) else bindingsFor(requiredVarBindings, ctx)
+        val bindings = if(insert && !delete) bindingsFor(requiredVarBindings, ctx).minus(lastEdgesOnPaths.toSet()) else bindingsFor(requiredVarBindings, ctx)
         val whereSentences = renderEdgeSet(bindings, requiredVarBindings.associateWith { it })
 
         if(!delete && !insert)
@@ -110,6 +113,16 @@ class QuerySynthesizer(anchor: String, vars: Map<String, VariableProperties>, pa
     override fun synthAddUpdate(v: String) = genericUpdate(v, delete = false, insert = true)
 
     override fun synthRemoveUpdate(v: String) = genericUpdate(v, delete = true, insert = false)
+
+    override fun synthFunctionalValidationQuery(v: String): String {
+        val ctx = paths.definingContextForVariable(v)
+
+        val edges = bindingsFor(setOf(v), ctx)
+        val whereTriplesA = renderEdgeSet(edges, mapOf(v to "a"))
+        val whereTriplesB = renderEdgeSet(edges, mapOf(v to "b"))
+
+        return "SELECT * WHERE { ?anchor a <$classTypeUri>. $whereTriplesA $whereTriplesB FILTER (?a != ?b) }"
+    }
 
     private fun bindingsFor(vars: Set<String>, optionalCtx: String): Set<VarDependency> {
         val toBind = vars.toMutableSet()
@@ -140,7 +153,6 @@ class QuerySynthesizer(anchor: String, vars: Map<String, VariableProperties>, pa
 
     private fun renderEdgeSet(edgeSet: Set<VarDependency>, assignableVars: Map<String,String>): String {
         // variable to blank node mapping
-        var blankNodeCounter = 0
         val blankNodeMap = mutableMapOf<String, String>()
 
         // collect by graph name and render into one block of triples per graph

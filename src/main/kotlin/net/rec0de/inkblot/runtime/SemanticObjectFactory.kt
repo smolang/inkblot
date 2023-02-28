@@ -7,14 +7,14 @@ import org.apache.jena.sparql.syntax.ElementFilter
 import org.apache.jena.sparql.syntax.ElementGroup
 import org.apache.jena.sparql.util.ExprUtils
 
-abstract class SemanticObjectFactory<Obj>(validateQuery: String, private val debugName: String) {
+abstract class SemanticObjectFactory<Obj>(validateQueries: List<String>, private val debugName: String) {
     protected abstract val anchor: String
     protected abstract val query: ParameterizedSparqlString
     private val validatingQueries: MutableList<Query>
 
     init {
         Inkblot.forceInit()
-        validatingQueries = mutableListOf(QueryFactory.create(validateQuery))
+        validatingQueries = validateQueries.map { QueryFactory.create(it) }.toMutableList()
         validateOnlineData(exceptionOnFailure = true)
     }
 

@@ -2,6 +2,12 @@
 
 Inkblot generates object-oriented libraries for semantic data access.
 
+## Setup
+
+Run `./gradlew shadowJar` to assemble an executable jar containing the inkblot library generation tool. To obtain jar containing the inkblot runtime, run `./gradlew runtimeJar`. Generated files are located in `build/libs/`. For information on automated tests, see [Testing.md](src/test/Testing.md).
+
+To use generated libraries, add the generated files to your project source tree and add the inkblot runtime jar as a dependency. Inkblot also requires [Jena](https://jena.apache.org/) to run.
+
 ## Usage
 
 The main inputs for inkblot will be the SPARQL queries that you would use to load the instances you are interested in. Many advanced SPARQL features are not supported, but any sufficiently simple query should work. For guidelines on how to write SPARQL for inkblot, see [SPARQL.md](SPARQL.md).
@@ -114,7 +120,7 @@ For each class defined in the json configuration, inkblot will generate a `<clas
 * `ExFactory.commitAndLoadAll()` returns a list of all class instances in the datastore
 * `ExFactory.commitAndLoadSelected(filter: String)` returns a list of all class instances matching the given SPARQL filter expression (using variable names as in the input SPARQL query)
 * `ExFactory.validateOnlineData()` runs validating SPARQL queries against the endpoint to check if the datastore is consistent with the assumptions made in the configuration. Causes a `ValidationQueryFailure` constraint violation on failure.
-* `ExFactory.addValidatingQuery(query: Query)` add an additional custom validating query. This query will be executed every time `validateOnlineData` is called and is expected to return an empty result. If the result is not empty, an exception is thrown.
+* `ExFactory.addValidatingQuery(query: Query)` add an additional custom validating query. This query will be executed every time `validateOnlineData` is called and is expected to return an empty result. If the result is not empty, an exception is thrown. See [Validation](Validation.md) for more info.
 
 ### Classes
 
@@ -168,7 +174,7 @@ While I figure out how to make gradle build a separate runtime library jar, you'
 
 ### Setting a SPARQL endpoint
 
-Before using any inkblot functions, you should set the SPARQL endpoint of your data store. You can do this at runtime (`Inkblot.endpoint = "http://..."`) or by hardcoding a custom value in `Inkblot.kt`. Changing the endpoint at runtime also ensures that the Jena ARQ components are initialized before you do anything else.
+Before using any inkblot functions, you should set the SPARQL endpoint of your data store. You can do this at runtime (`Inkblot.endpoint = "http://..."`) or by hardcoding a custom value in `Inkblot.kt`.
 
 ### Object creation
 
@@ -180,6 +186,6 @@ If these parameters do not match your needs, it is possible to change the ID gen
 
 ### Constraint violations
 
-The inkblot runtime offers some support for detecting data constraint violations at runtime. For now, this is only supported for failing validation queries and the (non-) positive/negative integer xsd types, which are mapped to java BigInteger objects that do not have the same range constraints. When values conflicting with the xsd data type range are assigned to a property at runtime, inkblot registers a constraint violation and notifies all `ConstraintViolationListeners`. Listeners may be added or removed using `Inkblot.addViolationListener(listener: ConstraintViolationListener)` and `Inkblot.removeViolationListener(listener: ConstraintViolationListener)`.
+The inkblot runtime offers some support for detecting data constraint violations at runtime. For now, this is only supported for failing [validation queries](Validation.md) and the (non-) positive/negative integer xsd types, which are mapped to java BigInteger objects that do not have the same range constraints. When values conflicting with the xsd data type range are assigned to a property at runtime, inkblot registers a constraint violation and notifies all `ConstraintViolationListeners`. Listeners may be added or removed using `Inkblot.addViolationListener(listener: ConstraintViolationListener)` and `Inkblot.removeViolationListener(listener: ConstraintViolationListener)`.
 
 You may also extend the amount of runtime checks by implementing custom subclasses of `ConstraintViolation` and call `Inkblot.violation(violation: ConstraintViolation)` to notify listeners.

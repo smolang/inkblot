@@ -1,6 +1,5 @@
 package net.rec0de.inkblot.runtime
 
-import net.rec0de.inkblot.codegen.prettifySparql
 import org.apache.jena.query.*
 import org.apache.jena.sparql.exec.http.QueryExecutionHTTP
 import org.apache.jena.sparql.syntax.ElementFilter
@@ -112,5 +111,16 @@ abstract class SemanticObjectFactory<Obj>(validateQueries: List<String>, private
         originalQuery.resultVars.forEach { q.addResultVar(it) }
 
         return q
+    }
+
+    private fun prettifySparql(query: Query): String {
+        val singleLine = query.toString().replace("\n", " ")
+        // trim excessive spacing & indentation
+        var despaced = singleLine.replace(Regex("\\s+"), " ")
+        // replace spaces in front of ; . and ) as well as at start and end of query
+        despaced = despaced.replace(Regex("\\s([;\\.\\)])")) { match -> match.groupValues[1] }.trim()
+        // replace spaces following (
+        despaced = despaced.replace(Regex("\\(\\s+"), "(")
+        return despaced
     }
 }

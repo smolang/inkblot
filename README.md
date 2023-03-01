@@ -4,7 +4,7 @@ Inkblot generates object-oriented libraries for semantic data access.
 
 ## Setup
 
-Run `./gradlew shadowJar` to assemble an executable jar containing the inkblot library generation tool. To obtain jar containing the inkblot runtime, run `./gradlew runtimeJar`. Generated files are located in `build/libs/`. For information on automated tests, see [Testing.md](src/test/Testing.md).
+Run `./gradlew shadowJar` to assemble an executable jar containing the inkblot library generation tool. To obtain a jar containing the inkblot runtime, run `./gradlew runtimeJar`. Generated files are located in `build/libs/`. For information on automated tests, see [Testing.md](src/test/Testing.md).
 
 To use generated libraries, add the generated files to your project source tree and add the inkblot runtime jar as a dependency. Inkblot also requires [Jena](https://jena.apache.org/) to run.
 
@@ -167,10 +167,6 @@ It is also possible to merge two objects of the same class together using the `m
 Finally, the `other` object is deleted and **all references to its anchor URI are replaced with the URI of the invoking object**.
 
 ## Runtime details
-
-### Setup
-
-While I figure out how to make gradle build a separate runtime library jar, you'll have to copy the sources from `net/rec0de/inkblot/runtime` to your project source tree.
 
 ### Setting a SPARQL endpoint
 

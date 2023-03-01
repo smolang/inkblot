@@ -101,9 +101,9 @@ If the name of the property (as it should be rendered in generated code) is the 
 
 ## Library usage
 
-### Commiting changes
+### Committing changes
 
-All changes made to objects remain local and in-memory until they are commited. To commit accumulated changes, call `Inkblot.commit()`. To avoid cache-consistency issues, the `commitAndLoadAll` and `commitAndLoadSelected` methods also commit outstanding changes before loading any objects (much like the name implies).
+All changes made to objects remain local and in-memory until they are committed. To commit accumulated changes, call `Inkblot.commit()`. To avoid cache-consistency issues, the `commitAndLoadAll` and `commitAndLoadSelected` methods also commit outstanding changes before loading any objects (much like the name implies).
 
 ### Factories
 
@@ -133,7 +133,7 @@ etc
 
 #### Functional, nullable properties
 
-Properties defined with `multiplicity: "?"` work much the same way, the only difference being that the can be null and, therefore, you can assign null values to them.
+Properties defined with `multiplicity: "?"` work much the same way, the only difference being that they can be null and, therefore, you can assign null values to them.
 
 ```kotlin
 bike.lamp = Lamp.create(...)
@@ -156,11 +156,15 @@ etc
 
 Objects can be marked for deletion using the `delete()` class method. Objects marked as deleted can still be used for read-access to their properties, but any attempt to write to them will throw an exception.
 
-It is also possible to merge two objects of the same class together using the `merge(other)` class method. This will copy all properties from the `other` object into the invoking object, overwriting existing values for functional properties. If a nullable property in the `other` object is null, any existing value in the involing object will not be overwritten.
+It is also possible to merge two objects of the same class together using the `merge(other)` class method. This will copy all properties from the `other` object into the invoking object, overwriting existing values for functional properties. If a nullable property in the `other` object is null, any existing value in the invoking object will not be overwritten.
 
 Finally, the `other` object is deleted and **all references to its anchor URI are replaced with the URI of the invoking object**.
 
 ## Runtime details
+
+### Setup
+
+While I figure out how to make gradle build a separate runtime library jar, you'll have to copy the sources from `net/rec0de/inkblot/runtime` to your project source tree.
 
 ### Setting a SPARQL endpoint
 

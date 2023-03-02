@@ -21,8 +21,22 @@ PREFIX ex: <http://e.x/> SELECT ?wheel ?diameter WHERE { ?wheel a ex:wheel; ex:d
 
 From these queries we can generate a configuration template:
 
+```bash
+java -jar inkblot.jar configure bikes.json "<QUERY1>" "<QUERY2>"
 ```
-inkblot configure bikes.json "<QUERY1>" "<QUERY2>"
+
+```
+Usage: inkblot configure [OPTIONS] OUTPUT [QUERIES]...
+
+Generate a placeholder configuration file from a list of SPARQL queries
+
+Options:
+  -f / --force       overwrite existing config file
+  -h, --help         Show this message and exit
+
+Arguments:
+  OUTPUT   location of generated JSON configuration
+  QUERIES  SPARQL select statements
 ```
 
 This will create the file `bikes.json` that looks something like this:
@@ -76,9 +90,28 @@ We can now fill in some additional details:
 
 With all that filled in, we are ready to generate our library:
 
+```bash
+java -jar inkblot.jar generate --decorators bikes.json /path/to/sources
 ```
-inkblot generate --decorators bikes.json /path/to/sources
+
 ```
+Usage: inkblot generate [OPTIONS] CONFIG OUTPATH
+
+Generate library classes from a configuration file
+
+Options:
+  --use-queries TEXT  use SPARQL queries from an inkblot-override JSON file
+                      instead of generated queries
+  -p, --package TEXT  package identifier to use for generated files
+  -d, --decorators    generate empty decorators for classes
+  --namespace TEXT    default namespace to use for new entities
+  -h, --help          show this message and exit
+
+Arguments:
+  CONFIG   JSON file containing SPARQL queries and options
+  OUTPATH  location where generated files should be placed
+```
+
 This will generate kotlin classes and factories alongside some SHACL constraints formalizing multiplicity and type assumptions we made in the configuration.
 
 Note that due to the expressiveness of SPARQL, the SHACL constraints may be overly strict and failure to validate them does not necessarily indicate a flaw in your data or query.

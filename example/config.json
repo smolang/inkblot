@@ -1,0 +1,63 @@
+{
+    "Bike": {
+        "anchor": "bike",
+        "type": "http://example.com/ns/class",
+        "query": "PREFIX bk: <http://rec0de.net/ns/bike#> SELECT ?bike ?mfg ?fw ?bw ?bells WHERE { ?bike a bk:bike; bk:hasFrame _:b0. _:b0 bk:frontWheel ?fw OPTIONAL { ?bike bk:hasFrame _:b1. _:b1 bk:backWheel ?bw } OPTIONAL { ?bike bk:mfgDate ?mfg } OPTIONAL { ?bike bk:hasFrame _:b2. _:b2 bk:hasBell ?bells } }",
+        "properties": {
+            "mfg": {
+                "sparql": "mfg",
+                "type": "http://example.com/ns/any",
+                "multiplicity": "*"
+            },
+            "fw": {
+                "sparql": "fw",
+                "type": "http://example.com/ns/any",
+                "multiplicity": "*"
+            },
+            "bw": {
+                "sparql": "bw",
+                "type": "http://example.com/ns/any",
+                "multiplicity": "*"
+            },
+            "bells": {
+                "sparql": "bells",
+                "type": "http://example.com/ns/any",
+                "multiplicity": "*"
+            }
+        }
+    },
+    "Wheel": {
+        "anchor": "wheel",
+        "type": "http://example.com/ns/class",
+        "query": "PREFIX bk: <http://rec0de.net/ns/bike#> SELECT ?wheel ?dia ?mfgD ?mfgN WHERE { ?wheel a bk:wheel; bk:diameter ?dia OPTIONAL { ?wheel bk:mfgDate ?mfgD } OPTIONAL { ?wheel bk:mfgName ?mfgN } }",
+        "properties": {
+            "dia": {
+                "sparql": "dia",
+                "type": "http://example.com/ns/any",
+                "multiplicity": "*"
+            },
+            "mfgD": {
+                "sparql": "mfgD",
+                "type": "http://example.com/ns/any",
+                "multiplicity": "*"
+            },
+            "mfgN": {
+                "sparql": "mfgN",
+                "type": "http://example.com/ns/any",
+                "multiplicity": "*"
+            }
+        }
+    },
+    "Bell": {
+        "anchor": "bell",
+        "type": "http://example.com/ns/class",
+        "query": "PREFIX bk: <http://rec0de.net/ns/bike#> SELECT ?bell ?color WHERE { ?bell a bk:bell; bk:color ?color }",
+        "properties": {
+            "color": {
+                "sparql": "color",
+                "type": "http://example.com/ns/any",
+                "multiplicity": "*"
+            }
+        }
+    }
+}

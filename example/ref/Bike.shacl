@@ -1,0 +1,33 @@
+<http://rec0de.net/ns/inkblot#SHACL-5bq4k7q-hk4latxc> a sh:NodeShape;
+sh:targetClass <http://rec0de.net/ns/bike#bike>;
+sh:property [
+	sh:nodeKind sh:IRI;
+	sh:class <http://rec0de.net/ns/bike#wheel>;
+	sh:maxCount 1;
+	sh:minCount 1;
+	sh:name "frontWheel property of Inkblot class Bike";
+	sh:message "frontWheel property of Inkblot class Bike is expected to be functional and non-null (exactly 1) and of type 'http://rec0de.net/ns/bike#wheel'";
+	sh:path (<http://rec0de.net/ns/bike#hasFrame> <http://rec0de.net/ns/bike#frontWheel>)
+];
+sh:property [
+	sh:nodeKind sh:IRI;
+	sh:class <http://rec0de.net/ns/bike#wheel>;
+	sh:maxCount 1;
+	sh:name "backWheel property of Inkblot class Bike";
+	sh:message "backWheel property of Inkblot class Bike is expected to be functional (max 1) and of type 'http://rec0de.net/ns/bike#wheel'";
+	sh:path (<http://rec0de.net/ns/bike#hasFrame> <http://rec0de.net/ns/bike#backWheel>)
+];
+sh:property [
+	sh:nodeKind sh:IRI;
+	sh:class <http://rec0de.net/ns/bike#bell>;
+	sh:name "bells property of Inkblot class Bike";
+	sh:message "bells property of Inkblot class Bike is expected to be of type 'http://rec0de.net/ns/bike#bell'";
+	sh:path (<http://rec0de.net/ns/bike#hasFrame> <http://rec0de.net/ns/bike#hasBell>)
+];
+sh:property [
+	sh:datatype <http://www.w3.org/2001/XMLSchema#int>;
+	sh:maxCount 1;
+	sh:name "mfgYear property of Inkblot class Bike";
+	sh:message "mfgYear property of Inkblot class Bike is expected to be functional (max 1) and of type 'xsd:int'";
+	sh:path <http://rec0de.net/ns/bike#mfgDate>
+].

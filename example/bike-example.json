@@ -1,33 +1,32 @@
 {
 	"Bike": {
-		"type": "http://rec0de.net/ns/bike#Bike",
+		"type": "http://rec0de.net/ns/bike#bike",
 		"anchor": "bike",
 		"query": "PREFIX bk: <http://rec0de.net/ns/bike#> SELECT ?bike ?mfg ?fw ?bw ?bells WHERE { ?bike a bk:bike; bk:hasFrame [bk:frontWheel ?fw] OPTIONAL { ?bike bk:hasFrame [bk:backWheel ?bw] } OPTIONAL { ?bike bk:mfgDate ?mfg } OPTIONAL { ?bike bk:hasFrame [bk:hasBell ?bells] } }",
 		"properties": {
 			"frontWheel" : {
 				"sparql": "fw",
-				"type": "http://rec0de.net/ns/bike#Wheel",
+				"type": "http://rec0de.net/ns/bike#wheel",
 				"multiplicity": "!"
 			},
 			"backWheel" : {
 				"sparql": "bw",
-				"type": "http://rec0de.net/ns/bike#Wheel",
+				"type": "http://rec0de.net/ns/bike#wheel",
 				"multiplicity": "?"
 			},
 			"bells" : {
-				"type": "http://rec0de.net/ns/bike#Bell",
+				"type": "http://rec0de.net/ns/bike#bell",
 				"multiplicity": "*"
 			},
 			"mfgYear" : {
 				"sparql": "mfg",
-				"type": "http://www.w3.org/2001/XMLSchema#int",
+				"type": "xsd:int",
 				"multiplicity": "?"
 			}
 		}
 	},
 	"Wheel": {
-		"type": "http://rec0de.net/ns/bike#Wheel",
-		"namespace": "http://rec0de.net/ns/wheels#",
+		"type": "http://rec0de.net/ns/bike#wheel",
 		"anchor": "wheel",
 		"query": "PREFIX bk: <http://rec0de.net/ns/bike#> SELECT ?wheel ?dia ?mfgD ?mfgN WHERE { ?wheel a bk:wheel; bk:diameter ?dia. OPTIONAL { ?wheel bk:mfgDate ?mfgD } OPTIONAL {?wheel bk:mfgName ?mfgN } }",
 		"properties": {
@@ -49,7 +48,7 @@
 		}
 	},
 	"Bell": {
-		"type": "http://rec0de.net/ns/bike#Bell",
+		"type": "http://rec0de.net/ns/bike#bell",
 		"anchor": "bell",
 		"query": "PREFIX bk: <http://rec0de.net/ns/bike#> SELECT ?bell ?color WHERE { ?bell a bk:bell; bk:color ?color }",
 		"properties": {

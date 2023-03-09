@@ -12,6 +12,8 @@ To use generated libraries, add the generated files to your project source tree 
 
 The main inputs for inkblot will be the SPARQL queries that you would use to load the instances you are interested in. Many advanced SPARQL features are not supported, but any sufficiently simple query should work. For guidelines on how to write SPARQL for inkblot, see [SPARQL.md](SPARQL.md).
 
+For a full usage example including all example files and outputs, see [Example.md](example/Example.md).
+
 Write one query for each class you'd like to have in the generated library. For example:
 
 ```sparql
@@ -22,11 +24,11 @@ PREFIX ex: <http://e.x/> SELECT ?wheel ?diameter WHERE { ?wheel a ex:wheel; ex:d
 From these queries we can generate a configuration template:
 
 ```bash
-java -jar inkblot.jar configure bikes.json "<QUERY1>" "<QUERY2>"
+java -jar inkblot.jar configure queries.txt bikes.json
 ```
 
 ```
-Usage: inkblot configure [OPTIONS] OUTPUT [QUERIES]...
+Usage: inkblt configure [OPTIONS] QUERYLIST OUTPUT
 
 Generate a placeholder configuration file from a list of SPARQL queries
 
@@ -35,8 +37,8 @@ Options:
   -h, --help         Show this message and exit
 
 Arguments:
-  OUTPUT   location of generated JSON configuration
-  QUERIES  SPARQL select statements
+  QUERYLIST  file containing SPARQL select statements (one per line)
+  OUTPUT     location of generated JSON configuration
 ```
 
 This will create the file `bikes.json` that looks something like this:

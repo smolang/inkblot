@@ -1,0 +1,22 @@
+{
+    "Bike": {
+        "creation": "INSERT DATA { ?anchor <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://rec0de.net/ns/bike#bike>. ?anchor <http://rec0de.net/ns/bike#hasFrame> _:b4. _:b4 <http://rec0de.net/ns/bike#frontWheel> ?fw. }",
+        "init-bw": "INSERT DATA { ?anchor <http://rec0de.net/ns/bike#hasFrame> _:b5. _:b5 <http://rec0de.net/ns/bike#backWheel> ?v. }",
+        "init-bells": "INSERT DATA { ?anchor <http://rec0de.net/ns/bike#hasFrame> _:b6. _:b6 <http://rec0de.net/ns/bike#hasBell> ?v. }",
+        "init-mfg": "INSERT DATA { ?anchor <http://rec0de.net/ns/bike#mfgDate> ?v. }",
+        "change-fw": "DELETE { ?inkblt0 <http://rec0de.net/ns/bike#frontWheel> ?o. } INSERT { ?inkblt0 <http://rec0de.net/ns/bike#frontWheel> ?n. } WHERE { ?anchor <http://rec0de.net/ns/bike#hasFrame> ?inkblt0. ?inkblt0 <http://rec0de.net/ns/bike#frontWheel> _:b7. }",
+        "remove-bw": "DELETE { ?inkblt1 <http://rec0de.net/ns/bike#backWheel> ?o. } WHERE { ?anchor <http://rec0de.net/ns/bike#hasFrame> ?inkblt1. ?inkblt1 <http://rec0de.net/ns/bike#backWheel> _:b8. }",
+        "add-bw": "INSERT { ?inkblt1 <http://rec0de.net/ns/bike#backWheel> ?n. } WHERE { ?anchor <http://rec0de.net/ns/bike#hasFrame> ?inkblt1. }",
+        "change-bw": "DELETE { ?inkblt1 <http://rec0de.net/ns/bike#backWheel> ?o. } INSERT { ?inkblt1 <http://rec0de.net/ns/bike#backWheel> ?n. } WHERE { ?anchor <http://rec0de.net/ns/bike#hasFrame> ?inkblt1. ?inkblt1 <http://rec0de.net/ns/bike#backWheel> _:b9. }",
+        "add-bells": "INSERT { ?inkblt2 <http://rec0de.net/ns/bike#hasBell> ?n. } WHERE { ?anchor <http://rec0de.net/ns/bike#hasFrame> ?inkblt2. }",
+        "remove-bells": "DELETE { ?inkblt2 <http://rec0de.net/ns/bike#hasBell> ?o. } WHERE { ?anchor <http://rec0de.net/ns/bike#hasFrame> ?inkblt2. ?inkblt2 <http://rec0de.net/ns/bike#hasBell> _:b10. }"
+    },
+    "Wheel": {
+        "creation": "INSERT DATA { ?anchor <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://rec0de.net/ns/bike#wheel>. ?anchor <http://rec0de.net/ns/bike#diameter> ?dia. }",
+        "init-mfgD": "INSERT DATA { ?anchor <http://rec0de.net/ns/bike#mfgDate> ?v. }",
+        "init-mfgN": "INSERT DATA { ?anchor <http://rec0de.net/ns/bike#mfgName> ?v. }"
+    },
+    "Bell": {
+        "creation": "INSERT DATA { ?anchor <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://rec0de.net/ns/bike#bell>. ?anchor <http://rec0de.net/ns/bike#color> ?color. }"
+    }
+}

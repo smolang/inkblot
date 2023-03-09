@@ -1,0 +1,10 @@
+<http://rec0de.net/ns/inkblot#SHACL-5bq4k7q-23dyezpf> a sh:NodeShape;
+sh:targetClass <http://rec0de.net/ns/bike#bell>;
+sh:property [
+	sh:datatype <http://www.w3.org/2001/XMLSchema#string>;
+	sh:maxCount 1;
+	sh:minCount 1;
+	sh:name "color property of Inkblot class Bell";
+	sh:message "color property of Inkblot class Bell is expected to be functional and non-null (exactly 1) and of type 'xsd:string'";
+	sh:path <http://rec0de.net/ns/bike#color>
+].

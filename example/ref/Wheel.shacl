@@ -1,0 +1,23 @@
+<http://rec0de.net/ns/inkblot#SHACL-5bq4k7q-6xgbdtax> a sh:NodeShape;
+sh:targetClass <http://rec0de.net/ns/bike#wheel>;
+sh:property [
+	sh:datatype <http://www.w3.org/2001/XMLSchema#double>;
+	sh:maxCount 1;
+	sh:minCount 1;
+	sh:name "diameter property of Inkblot class Wheel";
+	sh:message "diameter property of Inkblot class Wheel is expected to be functional and non-null (exactly 1) and of type 'xsd:double'";
+	sh:path <http://rec0de.net/ns/bike#diameter>
+];
+sh:property [
+	sh:datatype <http://www.w3.org/2001/XMLSchema#int>;
+	sh:maxCount 1;
+	sh:name "mfgYear property of Inkblot class Wheel";
+	sh:message "mfgYear property of Inkblot class Wheel is expected to be functional (max 1) and of type 'xsd:int'";
+	sh:path <http://rec0de.net/ns/bike#mfgDate>
+];
+sh:property [
+	sh:datatype <http://www.w3.org/2001/XMLSchema#string>;
+	sh:name "mfgNames property of Inkblot class Wheel";
+	sh:message "mfgNames property of Inkblot class Wheel is expected to be of type 'http://www.w3.org/2001/XMLSchema#string'";
+	sh:path <http://rec0de.net/ns/bike#mfgName>
+].

@@ -1,7 +1,6 @@
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.core.subcommands
 import com.github.ajalt.clikt.parameters.arguments.argument
-import com.github.ajalt.clikt.parameters.arguments.multiple
 import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.option
@@ -11,7 +10,6 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import net.rec0de.inkblot.codegen.*
-import net.rec0de.inkblot.runtime.Inkblot
 import org.apache.jena.query.ParameterizedSparqlString
 import java.io.File
 import kotlin.io.path.Path
@@ -99,15 +97,19 @@ class Generate: CliktCommand(help="Generate library classes from a configuration
 }
 
 class Configure: CliktCommand(help="Generate a placeholder configuration file from a list of SPARQL queries") {
+    private val queryList: String by argument(help="file containing SPARQL select statements (one per line)")
     private val output: String by argument(help="location of generated JSON configuration")
-    private val queries: List<String> by argument(help="SPARQL select statements").multiple()
     private val override by option("-f", help="overwrite existing config file").flag("--force")
     private val forbiddenMagic by option(help="use dark magic to guess sensible configuration values").flag()
     private val endpoint by option(help="endpoint to use for dark magic analysis")
 
     override fun run() {
-        val configFile = File(output)
+        val queryFile = File(queryList)
+        if(!queryFile.exists())
+            throw Exception("Query input file '${queryFile.path}' does not exist")
+        val queries = queryFile.readLines()
 
+        val configFile = File(output)
         if(configFile.exists() && !override)
             throw Exception("Output location '${configFile.path}' already exists. Use -f to overwrite")
 
@@ -124,10 +126,4 @@ class Configure: CliktCommand(help="Generate a placeholder configuration file fr
     }
 }
 
-class Playground: CliktCommand(help="Execute playground environment") {
-    override fun run() {
-
-    }
-}
-
-fun main(args: Array<String>) = Inkblt().subcommands(Playground(), Generate(), Configure()).main(args)
+fun main(args: Array<String>) = Inkblt().subcommands(Generate(), Configure()).main(args)

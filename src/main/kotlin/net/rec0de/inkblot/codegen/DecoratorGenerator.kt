@@ -25,6 +25,7 @@ class DecoratorGenerator(
         return """
             class Decorated$className(private val $varName: $className) {
                 ${indent(genPropertyLifting(varName), 4)}
+                ${indent(mergeDeleteLifting(varName), 4)}
             }
         """.trimIndent()
     }
@@ -53,6 +54,13 @@ class DecoratorGenerator(
                 get() = $innerClass.${v.targetName}
             fun ${v.targetName}_add(entry: ${v.kotlinType}) = $innerClass.${v.targetName}_add(entry)
             fun ${v.targetName}_remove(entry: ${v.kotlinType}) = $innerClass.${v.targetName}_remove(entry)
+        """.trimIndent()
+    }
+
+    private fun mergeDeleteLifting(innerClass: String): String {
+        return """
+            fun delete() = $innerClass.delete()
+            fun merge(other: Decorated$className) = $innerClass.merge(other.$innerClass)
         """.trimIndent()
     }
 

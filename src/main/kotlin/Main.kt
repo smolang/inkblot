@@ -26,7 +26,7 @@ class Generate: CliktCommand(help="Generate library classes from a configuration
     private val backend by option("--backend", help="code generation backend to use - defaults to kotlin and only supports kotlin").default("kotlin")
     private val options by option("--options", help="backend-specific options").default("")
     private val pkgOpt by option("-p", "--package", help="package identifier to use for generated files")
-    private val genDecorators by option("-d", "--decorators", help="generate empty decorators for classes").flag()
+    private val genWrappers by option("-w", "--wrappers", help="generate empty wrappers for classes").flag()
     private val namespace by option(help="default namespace to use for new entities").default("http://rec0de.net/ns/inkblot#")
 
     override fun run() {
@@ -41,8 +41,8 @@ class Generate: CliktCommand(help="Generate library classes from a configuration
 
         // lifting backend options into neat top-level options with help/documentation
         // because are we ever _really_ adding another backend?
-        if(genDecorators)
-            backendOptions.add("decorators")
+        if(genWrappers)
+            backendOptions.add("wrappers")
         if(pkgOpt != null)
             backendOptions.add("pkg=$pkgOpt")
 

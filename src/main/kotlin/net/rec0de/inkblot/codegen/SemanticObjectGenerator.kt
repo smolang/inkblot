@@ -36,8 +36,8 @@ class SemanticObjectGenerator(
         destination.writeText(gen())
         println("Generated file '$className.kt'")
 
-        if(options.contains("decorators"))
-            DecoratorGenerator(className, variableInfo).generateToFilesInPath(path, pkg)
+        if(options.contains("wrappers"))
+            WrapperGenerator(className, variableInfo).generateToFilesInPath(path, pkg)
     }
 
     override fun genBoilerplate() = pkg() + "\n" + imports() + "\n"

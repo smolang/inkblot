@@ -4,7 +4,7 @@ import net.rec0de.inkblot.reasoning.VariableProperties
 import java.io.File
 import java.nio.file.Path
 
-class DecoratorGenerator(
+class WrapperGenerator(
     private val className: String,
     private val variableInfo: Map<String, VariableProperties>
 ) {
@@ -12,18 +12,18 @@ class DecoratorGenerator(
     private var pkg = "gen"
 
     fun generateToFilesInPath(path: Path, pkgId: String) {
-        val destination = File(path.toFile(), "Decorated$className.kt")
+        val destination = File(path.toFile(), "Wrapped$className.kt")
         pkg = pkgId
         destination.writeText(gen())
-        println("Generated file 'Decorated$className.kt'")
+        println("Generated file 'Wrapped$className.kt'")
     }
 
-    fun gen() = pkg() + "\n" + imports() + "\n" + genDecorator()
+    fun gen() = pkg() + "\n" + imports() + "\n" + genWrapper()
 
-    private fun genDecorator(): String {
+    private fun genWrapper(): String {
         val varName = className.replaceFirstChar(Char::lowercase)
         return """
-            class Decorated$className(private val $varName: $className) {
+            class Wrapped$className(private val $varName: $className) {
                 ${indent(genPropertyLifting(varName), 4)}
                 ${indent(mergeDeleteLifting(varName), 4)}
             }
@@ -60,7 +60,7 @@ class DecoratorGenerator(
     private fun mergeDeleteLifting(innerClass: String): String {
         return """
             fun delete() = $innerClass.delete()
-            fun merge(other: Decorated$className) = $innerClass.merge(other.$innerClass)
+            fun merge(other: Wrapped$className) = $innerClass.merge(other.$innerClass)
         """.trimIndent()
     }
 

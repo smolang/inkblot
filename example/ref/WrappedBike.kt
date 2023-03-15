@@ -1,7 +1,7 @@
 package ref
 
 
-class DecoratedBike(private val bike: Bike) {
+class WrappedBike(private val bike: Bike) {
     var frontWheel: Wheel
         get() = bike.frontWheel
         set(value) { bike.frontWheel = value }
@@ -19,5 +19,5 @@ class DecoratedBike(private val bike: Bike) {
         get() = bike.mfgYear
         set(value) { bike.mfgYear = value }
     fun delete() = bike.delete()
-    fun merge(other: DecoratedBike) = bike.merge(other.bike)
+    fun merge(other: WrappedBike) = bike.merge(other.bike)
 }

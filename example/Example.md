@@ -41,10 +41,10 @@ With the configuration completed, we can generate the actual library code. A min
 java -jar inkblot.jar generate config.json gen
 ```
 
-To add decorators for the generated classes and be more explicit about things, we can use this more verbose command:
+To add wrappers for the generated classes and be more explicit about things, we can use this more verbose command:
 
 ```bash
-java -jar inkblot.jar generate --decorators --namespace "http://rec0de.net/ns/bike#" --package "gen" config.json gen
+java -jar inkblot.jar generate --wrappers --namespace "http://rec0de.net/ns/bike#" --package "gen" config.json gen
 ```
 
 The second command should produce the same files you can find in the [reference folder](ref), possibly with minor changes if you made different decisions in filling in the configuration template.
@@ -60,7 +60,7 @@ dependencies {
 }
 ```
 
-Now you can add the generated sources to your project source tree and you should be able to use them just like regular objects. Have a look at the [one of the decorators](ref/DecoratedBike.kt) for a good idea of how to interact with the generated classes.
+Now you can add the generated sources to your project source tree and you should be able to use them just like regular objects. Have a look at the [one of the wrappers](ref/WrappedBike.kt) for a good idea of how to interact with the generated classes.
 
 Remember to set your SPARQL endpoint on startup and commit whenever you want to persist changes:
 

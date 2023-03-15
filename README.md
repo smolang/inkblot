@@ -93,7 +93,7 @@ We can now fill in some additional details:
 With all that filled in, we are ready to generate our library:
 
 ```bash
-java -jar inkblot.jar generate --decorators bikes.json /path/to/sources
+java -jar inkblot.jar generate --wrappers bikes.json /path/to/sources
 ```
 
 ```
@@ -105,7 +105,7 @@ Options:
   --use-queries TEXT  use SPARQL queries from an inkblot-override JSON file
                       instead of generated queries
   -p, --package TEXT  package identifier to use for generated files
-  -d, --decorators    generate empty decorators for classes
+  -w, --wrappers      generate empty wrappers for classes
   --namespace TEXT    default namespace to use for new entities
   -h, --help          show this message and exit
 

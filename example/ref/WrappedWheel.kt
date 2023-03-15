@@ -1,7 +1,7 @@
 package ref
 
 
-class DecoratedWheel(private val wheel: Wheel) {
+class WrappedWheel(private val wheel: Wheel) {
     var diameter: Double
         get() = wheel.diameter
         set(value) { wheel.diameter = value }
@@ -15,5 +15,5 @@ class DecoratedWheel(private val wheel: Wheel) {
     fun mfgNames_add(entry: String) = wheel.mfgNames_add(entry)
     fun mfgNames_remove(entry: String) = wheel.mfgNames_remove(entry)
     fun delete() = wheel.delete()
-    fun merge(other: DecoratedWheel) = wheel.merge(other.wheel)
+    fun merge(other: WrappedWheel) = wheel.merge(other.wheel)
 }

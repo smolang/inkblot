@@ -61,6 +61,10 @@ class VariablePathAnalysis(query: Query, val anchor: String) {
             if (v.isEmpty())
                 throw Exception("Unable to derive dependency path from ?$anchor to ?$k")
 
+            val optionalCtx = definingContextForVariable(k)
+            if(v.none{ path -> path.all { edge -> optionalCtx.startsWith(edge.dependency.optionalContexts) } })
+                throw Exception("No path from ?$anchor to ?$k is safe in the defining context of ?$k")
+
             /*println("Dependency paths from $anchor to $k:")
             v.forEach { path -> println(path.joinToString("->")) }*/
 

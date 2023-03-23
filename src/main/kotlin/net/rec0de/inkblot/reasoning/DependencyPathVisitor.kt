@@ -30,10 +30,12 @@ class DependencyPathVisitor : ElementVisitorBase() {
 
     override fun visit(el: ElementAssign) {
         print("ElementAssign")
+        throw Exception("Assignments are not supported")
     }
 
     override fun visit(el: ElementBind) {
         print("ElementBind")
+        throw Exception("Explicit bindings are not supported")
     }
 
     override fun visit(el: ElementData) {

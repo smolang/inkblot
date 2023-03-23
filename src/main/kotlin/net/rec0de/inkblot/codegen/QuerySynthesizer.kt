@@ -1,6 +1,7 @@
 package net.rec0de.inkblot.codegen
 
 import net.rec0de.inkblot.reasoning.VarDependency
+import net.rec0de.inkblot.reasoning.VarDepEdge
 import net.rec0de.inkblot.reasoning.VariablePathAnalysis
 import net.rec0de.inkblot.reasoning.VariableProperties
 
@@ -60,12 +61,28 @@ class QuerySynthesizer(anchor: String, classTypeUri: String, vars: Map<String, V
     }
 
     private fun genericUpdate(v: String, delete: Boolean, insert: Boolean): String {
-        val deleteSentences = mutableListOf<String>()
         val insertSentences = mutableListOf<String>()
         val requiredVarBindings = mutableSetOf<String>()
         mutableSetOf<VarDependency>()
 
-        val lastEdgesOnPaths = paths.pathsToVariable(v).map { it.last().dependency }
+        val lastEdgesOnPaths = paths.pathsToVariable(v).map { it.last() }
+        val insertedEdges = mutableSetOf<VarDependency>()
+
+        // when deleting, we only want to delete what's absolutely necessary, e.g. leaving type labels of removed nodes intact
+        val deleteSentences = lastEdgesOnPaths.map{
+            val sourceNode = if(it.backward) it.dependency.oNode else it.dependency.sNode
+            val source = when {
+                sourceNode.isURI -> "<${sourceNode.uri}>"
+                sourceNode.isLiteral -> "\"${sourceNode.literal}\""
+                sourceNode.isVariable && sourceNode.name == anchor -> "?anchor"
+                sourceNode.isVariable -> {
+                    requiredVarBindings.add(sourceNode.name)
+                    rewriteAnonymousVariableNames(sourceNode.name)
+                }
+                else -> throw Exception("Unknown Node type in $it")
+            }
+            tripleInGraph(source, it.dependency.p, "?o", it.backward, it.dependency.inGraph)
+        }
 
         val neighborhood = paths.edgesFor(v)
         neighborhood.forEach { edge ->
@@ -83,16 +100,27 @@ class QuerySynthesizer(anchor: String, classTypeUri: String, vars: Map<String, V
                 else -> throw Exception("Unknown Node type in $edge")
             }
 
-            // when deleting, we only want to delete what's absolutely necessary, e.g. leaving type labels of removed nodes intact
-            if(lastEdgesOnPaths.contains(edge)) {
-                deleteSentences.add(tripleInGraph(source, edge.p, "?o", backwards, edge.inGraph))
-            }
             insertSentences.add(tripleInGraph(source, edge.p, "?n", backwards, edge.inGraph))
+            insertedEdges.add(edge)
         }
 
+
         val ctx = paths.definingContextForVariable(v)
+
+
+        // in the pure insertion case we have to assume that optional edges have not been created yet, so we'll include them in the insert set
+        if(insert && !delete) {
+            val pureInsertRequired = bindingsFor(requiredVarBindings, ctx).minus(insertedEdges).filter{ it.optional }
+            insertedEdges.addAll(pureInsertRequired)
+            val rendered = renderEdgeSet(pureInsertRequired.toSet(), requiredVarBindings.associateWith { it })
+            insertSentences.add(rendered)
+        }
+
         // in the pure insertion case we cannot include full bindings in the where clause because those structures might not be there yet
-        val bindings = if(insert && !delete) bindingsFor(requiredVarBindings, ctx).minus(lastEdgesOnPaths.toSet()) else bindingsFor(requiredVarBindings, ctx)
+        val bindings = if(insert && !delete)
+            bindingsFor(requiredVarBindings, ctx).minus(insertedEdges)
+        else
+            bindingsFor(requiredVarBindings, ctx)
         val whereSentences = renderEdgeSet(bindings, requiredVarBindings.associateWith { it })
 
         if(!delete && !insert)

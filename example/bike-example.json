@@ -7,21 +7,21 @@
 			"frontWheel" : {
 				"sparql": "fw",
 				"type": "http://rec0de.net/ns/bike#wheel",
-				"multiplicity": "!"
+				"cardinality": "!"
 			},
 			"backWheel" : {
 				"sparql": "bw",
 				"type": "http://rec0de.net/ns/bike#wheel",
-				"multiplicity": "?"
+				"cardinality": "?"
 			},
 			"bells" : {
 				"type": "http://rec0de.net/ns/bike#bell",
-				"multiplicity": "*"
+				"cardinality": "*"
 			},
 			"mfgYear" : {
 				"sparql": "mfg",
 				"type": "xsd:int",
-				"multiplicity": "?"
+				"cardinality": "?"
 			}
 		}
 	},
@@ -33,17 +33,17 @@
 			"diameter" : {
 				"sparql": "dia",
 				"type": "xsd:double",
-				"multiplicity": "!"
+				"cardinality": "!"
 			},
 			"mfgYear" : {
 				"sparql": "mfgD",
 				"type": "xsd:int",
-				"multiplicity": "?"
+				"cardinality": "?"
 			},
 			"mfgNames" : {
 				"sparql": "mfgN",
 				"type": "http://www.w3.org/2001/XMLSchema#string",
-				"multiplicity": "*"
+				"cardinality": "*"
 			}
 		}
 	},
@@ -54,7 +54,7 @@
 		"properties": {
 			"color" : {
 				"type": "xsd:string",
-				"multiplicity": "!"
+				"cardinality": "!"
 			}
 		}
 	}

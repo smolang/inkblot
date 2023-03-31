@@ -31,7 +31,7 @@ While we can always write our configuration files by hand, it's usually faster t
 java -jar inkblot.jar configure queries.txt config.json
 ```
 
-Fill in the type and multiplicity details in the generated `config.json` file to your liking. For a completed example config, see [bike-example.json](bike-example.json). Refer to the [readme](../README.md#usage) for details on how to fill in the necessary details.
+Fill in the type and cardinality details in the generated `config.json` file to your liking. For a completed example config, see [bike-example.json](bike-example.json). Refer to the [readme](../README.md#usage) for details on how to fill in the necessary details.
 
 ## Generating library code
 

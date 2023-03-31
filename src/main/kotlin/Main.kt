@@ -57,8 +57,8 @@ class Generate: CliktCommand(help="Generate library classes from a configuration
 
         cfg.forEach { (className, classConfig) ->
             val variableInfo = classConfig.properties.map { (propName, propConfig) ->
-                val nullable = propConfig.multiplicity != "!"
-                val functional = propConfig.multiplicity != "*"
+                val nullable = propConfig.cardinality != "!"
+                val functional = propConfig.cardinality != "*"
                 val objectReference = TypeMapper.isObjectType(propConfig.type)
                 val sparql = propConfig.sparql ?: propName
                 val props = VariableProperties(sparql, propName, nullable, functional, TypeMapper.xsdToKotlinType(propConfig.type), propConfig.type, objectReference)

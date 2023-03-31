@@ -21,8 +21,8 @@ internal class BikeTestGenerator {
 
         cfg.forEach { (className, classConfig) ->
             val variableInfo = classConfig.properties.map { (propName, propConfig) ->
-                val nullable = propConfig.multiplicity != "!"
-                val functional = propConfig.multiplicity != "*"
+                val nullable = propConfig.cardinality != "!"
+                val functional = propConfig.cardinality != "*"
                 val objectReference = TypeMapper.isObjectType(propConfig.type)
                 val sparql = propConfig.sparql ?: propName
                 val props = VariableProperties(

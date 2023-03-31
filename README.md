@@ -53,17 +53,17 @@ This will create the file `bikes.json` that looks something like this:
             "frontWheel": {
                 "sparql": "frontWheel",
                 "type": "http://example.com/ns/any",
-                "multiplicity": "*"
+                "cardinality": "*"
             },
             "backWheel": {
                 "sparql": "backWheel",
                 "type": "http://example.com/ns/any",
-                "multiplicity": "*"
+                "cardinality": "*"
             },
             "color": {
                 "sparql": "color",
                 "type": "http://example.com/ns/any",
-                "multiplicity": "*"
+                "cardinality": "*"
             }
         }
     },
@@ -75,7 +75,7 @@ This will create the file `bikes.json` that looks something like this:
             "diameter": {
                 "sparql": "diameter",
                 "type": "http://example.com/ns/any",
-                "multiplicity": "*"
+                "cardinality": "*"
             }
         }
     }
@@ -88,7 +88,7 @@ We can now fill in some additional details:
 * Similarly, change class names (while keeping the 'anchor' key the same).
 * Add type information to classes. This is necessary for inkblot to recognize object references. For example, change the type of `Bike` to `http://e.x/bike` in this example.
 * Add type information to properties. For references, use the type annotated in the corresponding class. For data types, use xsd types, either as URI or with the `xsd:` prefix. For references that you want to treat as simple strings in the generated code, use `inkblot:rawObjectReference`.
-* Change multiplicity information. By default, inkblot expects that a property can have arbitrarily many values, which will be rendered as a list. To assert that a property can only have one value (i.e. is functional), set multiplicity to `!` for exactly one or `?` for zero or one.
+* Change cardinality information. By default, inkblot expects that a property can have arbitrarily many values, which will be rendered as a list. To assert that a property can only have one value (i.e. is functional), set cardinality to `!` for exactly one or `?` for zero or one.
 
 With all that filled in, we are ready to generate our library:
 
@@ -114,7 +114,7 @@ Arguments:
   OUTPATH  location where generated files should be placed
 ```
 
-This will generate kotlin classes and factories alongside some SHACL constraints formalizing multiplicity and type assumptions we made in the configuration.
+This will generate kotlin classes and factories alongside some SHACL constraints formalizing cardinality and type assumptions we made in the configuration.
 
 Note that due to the expressiveness of SPARQL, the SHACL constraints may be overly strict and failure to validate them does not necessarily indicate a flaw in your data or query.
 
@@ -163,7 +163,7 @@ For convenience, generated classes include a companion object giving access to t
 
 #### Functional, non-null properties
 
-Properties defined with `multiplicity: "!"` are rendered as, and can be used like, simple object properties:
+Properties defined with `cardinality: "!"` are rendered as, and can be used like, simple object properties:
 
 ```kotlin
 bike.distanceDriven = 0
@@ -174,7 +174,7 @@ etc
 
 #### Functional, nullable properties
 
-Properties defined with `multiplicity: "?"` work much the same way, the only difference being that they can be null and, therefore, you can assign null values to them.
+Properties defined with `cardinality: "?"` work much the same way, the only difference being that they can be null and, therefore, you can assign null values to them.
 
 ```kotlin
 bike.lamp = Lamp.create(...)
@@ -185,7 +185,7 @@ etc
 
 #### Non-functional properties
 
-Properties defined with `multiplicity: "*"` are rendered as lists. Inkblot provides read-only access to a kotlin list containing all values using a property of the name defined in the json config file. Elements may be added or removed using the `<name>_add(element)` and `<name>_remove(element)` class methods. Note that despite being accessed as a list, these collections of values have set semantics, following from RDF semantics.
+Properties defined with `cardinality: "*"` are rendered as lists. Inkblot provides read-only access to a kotlin list containing all values using a property of the name defined in the json config file. Elements may be added or removed using the `<name>_add(element)` and `<name>_remove(element)` class methods. Note that despite being accessed as a list, these collections of values have set semantics, following from RDF semantics.
 
 ```kotlin
 val ornamentColors = bike.ornaments.map{ it.color }

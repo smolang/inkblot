@@ -7,22 +7,22 @@
             "mfg": {
                 "sparql": "mfg",
                 "type": "http://example.com/ns/any",
-                "multiplicity": "*"
+                "cardinality": "*"
             },
             "fw": {
                 "sparql": "fw",
                 "type": "http://example.com/ns/any",
-                "multiplicity": "*"
+                "cardinality": "*"
             },
             "bw": {
                 "sparql": "bw",
                 "type": "http://example.com/ns/any",
-                "multiplicity": "*"
+                "cardinality": "*"
             },
             "bells": {
                 "sparql": "bells",
                 "type": "http://example.com/ns/any",
-                "multiplicity": "*"
+                "cardinality": "*"
             }
         }
     },
@@ -34,17 +34,17 @@
             "dia": {
                 "sparql": "dia",
                 "type": "http://example.com/ns/any",
-                "multiplicity": "*"
+                "cardinality": "*"
             },
             "mfgD": {
                 "sparql": "mfgD",
                 "type": "http://example.com/ns/any",
-                "multiplicity": "*"
+                "cardinality": "*"
             },
             "mfgN": {
                 "sparql": "mfgN",
                 "type": "http://example.com/ns/any",
-                "multiplicity": "*"
+                "cardinality": "*"
             }
         }
     },
@@ -56,7 +56,7 @@
             "color": {
                 "sparql": "color",
                 "type": "http://example.com/ns/any",
-                "multiplicity": "*"
+                "cardinality": "*"
             }
         }
     }

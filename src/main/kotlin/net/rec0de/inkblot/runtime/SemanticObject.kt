@@ -1,8 +1,12 @@
 package net.rec0de.inkblot.runtime
 
+import org.apache.jena.query.ParameterizedSparqlString
+
 abstract class SemanticObject(val uri: String) {
     protected var deleted = false
     private var dirty = false
+    protected abstract val deleteUpdate: ParameterizedSparqlString
+    protected abstract val deleteRedirectUpdate: ParameterizedSparqlString
 
     init {
         // compiler tells me this is bad because we're pushing a potentially unfinished object to cache
@@ -26,12 +30,17 @@ abstract class SemanticObject(val uri: String) {
     open fun delete() {
         markDirty()
         deleted = true
-        Inkblot.changelog.add(DeleteObject(uri))
+        val update = deleteUpdate.copy()
+        update.setIri("anchor", uri)
+        Inkblot.changelog.add(ComplexDelete(update.asUpdate()))
     }
 
     fun delete(redirectReferencesToURI: String) {
         markDirty()
         deleted = true
-        Inkblot.changelog.add(RedirectDelete(uri, redirectReferencesToURI))
+        val update = deleteRedirectUpdate.copy()
+        update.setIri("anchor", uri)
+        update.setIri("target", redirectReferencesToURI)
+        Inkblot.changelog.add(ComplexDelete(update.asUpdate()))
     }
 }

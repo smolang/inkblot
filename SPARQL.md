@@ -105,3 +105,4 @@ When modifying queries, keep in mind that:
 * for creation updates, sparql variables will be bound to values from the class constructor as specified in the configuration
 * for initializer queries, `?n` will be bound to the value of the initialized property
 * for change/add/remove updates, `?o` will be bound to the old value of the property and `?n` will be bound to the new value (if such values exist)
+* for delete and deleteRedirect updates, `?anchor` will be bound to the object's URI and, if redirecting incoming references, `?target` will be bound to the URI of the object to redirect to.

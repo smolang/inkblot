@@ -39,7 +39,7 @@ abstract class AbstractQuerySynthesizer(
         val key = "init-$v"
         return if(overrideMap.containsKey(key)) {
             val update = overrideMap[key]!!
-            println("Using override init-$v update: ")
+            println("Using override $key update: ")
             println(update)
             update
         }
@@ -54,7 +54,7 @@ abstract class AbstractQuerySynthesizer(
         val key = "change-$v"
         return if(overrideMap.containsKey(key)) {
             val update = overrideMap[key]!!
-            println("Using override change-$v update: ")
+            println("Using override $key update: ")
             println(update)
             update
         }
@@ -69,7 +69,7 @@ abstract class AbstractQuerySynthesizer(
         val key = "add-$v"
         return if(overrideMap.containsKey(key)) {
             val update = overrideMap[key]!!
-            println("Using override add-$v update: ")
+            println("Using override $key update: ")
             println(update)
             update
         }
@@ -84,12 +84,42 @@ abstract class AbstractQuerySynthesizer(
         val key = "remove-$v"
         return if(overrideMap.containsKey(key)) {
             val update = overrideMap[key]!!
-            println("Using override remove-$v update: ")
+            println("Using override $key update: ")
             println(update)
             update
         }
         else {
             val update = synthRemoveUpdate(v)
+            overrideMap[key] = update
+            update
+        }
+    }
+
+    fun deleteUpdate(): String {
+        val key = "delete"
+        return if(overrideMap.containsKey(key)) {
+            val update = overrideMap[key]!!
+            println("Using override $key update: ")
+            println(update)
+            update
+        }
+        else {
+            val update = "DELETE WHERE { ?anchor ?b ?c }; DELETE WHERE { ?d ?e ?anchor }"
+            overrideMap[key] = update
+            update
+        }
+    }
+
+    fun deleteRedirectUpdate(): String {
+        val key = "deleteRedirect"
+        return if(overrideMap.containsKey(key)) {
+            val update = overrideMap[key]!!
+            println("Using override $key update: ")
+            println(update)
+            update
+        }
+        else {
+            val update = "DELETE { ?s ?p ?anchor } INSERT { ?s ?p ?target } WHERE { ?s ?p ?anchor }; DELETE WHERE { ?anchor ?b ?c }"
             overrideMap[key] = update
             update
         }

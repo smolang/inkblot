@@ -61,6 +61,7 @@ abstract class ComplexChangeNode(private val update: UpdateRequest) : ChangeNode
 class ComplexPropertyAdd(update: UpdateRequest) : ComplexChangeNode(update)
 class ComplexPropertyRemove(update: UpdateRequest) : ComplexChangeNode(update)
 class CreateNode(update: UpdateRequest) : ComplexChangeNode(update)
+class ComplexDelete(update: UpdateRequest) : ComplexChangeNode(update)
 
 abstract class CommonChangeNode : ChangeNode
 
@@ -93,27 +94,6 @@ class CommonPropertyChange(private val objectUri: String, private val propertyUr
         template.setIri("p", propertyUri)
         template.setParam("o", oldValue)
         template.setParam("n", newValue)
-        return template.asUpdate()
-    }
-}
-
-class DeleteObject(private val uri: String) : CommonChangeNode() {
-    override fun asUpdate(): UpdateRequest {
-        // delete all triples where the deleted entity occurs either as subject or object
-        val template = ParameterizedSparqlString("DELETE WHERE { ?a ?b ?c }; DELETE WHERE { ?d ?e ?a }")
-        template.setIri("a", uri)
-        return template.asUpdate()
-    }
-}
-
-class RedirectDelete(private val oldUri: String, private val newUri: String) : CommonChangeNode() {
-    override fun asUpdate(): UpdateRequest {
-        // redirect all incoming edges to the replacement node
-        // delete all outgoing edges (we assume these have been copied over before)
-        val template = ParameterizedSparqlString("DELETE { ?s ?p ?o } INSERT { ?s ?p ?on } WHERE { ?s ?p ?o }; DELETE WHERE { ?a ?b ?c }")
-        template.setIri("o", oldUri)
-        template.setIri("on", newUri)
-        template.setIri("a", oldUri)
         return template.asUpdate()
     }
 }

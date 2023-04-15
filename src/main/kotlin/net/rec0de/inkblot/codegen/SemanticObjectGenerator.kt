@@ -130,11 +130,11 @@ class SemanticObjectGenerator(
 
         val initializers = vars.mapValues { (sparql, props) ->
             val targetBinding = if(props.isObjectReference)
-                "partialUpdate.setIri(\"v\", ${props.targetName}.uri)"
+                "partialUpdate.setIri(\"n\", ${props.targetName}.uri)"
             else if(props.xsdType == "inkblot:rawObjectReference")
-                "partialUpdate.setIri(\"v\", ${props.targetName})"
+                "partialUpdate.setIri(\"n\", ${props.targetName})"
             else
-                "partialUpdate.setParam(\"v\", ${TypeMapper.valueToLiteral(props.targetName, props.xsdType)})"
+                "partialUpdate.setParam(\"n\", ${TypeMapper.valueToLiteral(props.targetName, props.xsdType)})"
 
             """
                 if(${props.targetName} != null) {
@@ -157,11 +157,11 @@ class SemanticObjectGenerator(
 
         val initializers = vars.mapValues { (sparql, props) ->
             val targetBinding = if(props.isObjectReference)
-                    "partialUpdate.setIri(\"v\", it.uri)"
+                    "partialUpdate.setIri(\"n\", it.uri)"
                 else if(props.xsdType == "inkblot:rawObjectReference")
-                    "partialUpdate.setIri(\"v\", it)"
+                    "partialUpdate.setIri(\"n\", it)"
                 else
-                    "partialUpdate.setParam(\"v\", ${TypeMapper.valueToLiteral("it", props.xsdType)})"
+                    "partialUpdate.setParam(\"n\", ${TypeMapper.valueToLiteral("it", props.xsdType)})"
 
             """
                 ${props.targetName}.forEach {

@@ -103,5 +103,5 @@ Whenever inkblot generates a library, it also creates a file named `inkblot-quer
 When modifying queries, keep in mind that:
 * `?anchor` will be bound to the anchor URI of the current object
 * for creation updates, sparql variables will be bound to values from the class constructor as specified in the configuration
-* for initializer queries, `?v` will be bound to the value of the initialized property
+* for initializer queries, `?n` will be bound to the value of the initialized property
 * for change/add/remove updates, `?o` will be bound to the old value of the property and `?n` will be bound to the new value (if such values exist)

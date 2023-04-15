@@ -31,34 +31,7 @@ class QuerySynthesizer(anchor: String, classTypeUri: String, vars: Map<String, V
         return "INSERT DATA { $insertStatements }"
     }
 
-    // TODO: can we replace most of this with an invocation to bindingsFor?
-    override fun synthInitializerUpdate(v: String): String {
-        // v is safe in all contexts that have the bindingContext as a prefix
-        // edges from parent contexts of the binding context are safe
-        val bindingContext = paths.definingContextForVariable(v)
-
-        // all paths to v that are safe in this context
-        val requiredPaths = paths.pathsToVariable(v).filter { path -> path.all { bindingContext.startsWith(it.dependency.optionalContexts) } }
-
-        // create concrete leaved paths that intersect with this property and are (newly) safe in this context
-        val requiredConcreteLeavedPaths = paths.concreteLeaves().flatMap { paths.pathsToConcrete(it) }.filter { path ->
-            path.any { it.dependency.optional } && path.all { bindingContext.startsWith(it.dependency.optionalContexts) } && requiredPaths.any{ pPath -> pPath.toSet().intersect(path.toSet()).isNotEmpty() }
-        }
-
-        //println("Newly safe concrete leaved paths for $v: $requiredConcreteLeavedPaths")
-
-        // maybe we'll worry about variable-leaved paths here at some point
-        // TODO
-
-        val varEdges = requiredPaths.flatten().map{ it.dependency }.toSet()
-        val conEdges = requiredConcreteLeavedPaths.flatten().map{ it.dependency }.toSet()
-        val requiredEdges = varEdges + conEdges
-
-        // recursively expand using edges considered safe not already in edge set
-        // provide copy of select query in where clause to provide variable bindings?
-        val insertStatements = renderEdgeSet(requiredEdges, mapOf(v to "v"))
-        return "INSERT DATA { $insertStatements }"
-    }
+    override fun synthInitializerUpdate(v: String) = genericUpdate(v, delete = false, insert = true)
 
     private fun genericUpdate(v: String, delete: Boolean, insert: Boolean): String {
         val insertSentences = mutableListOf<String>()
@@ -104,9 +77,7 @@ class QuerySynthesizer(anchor: String, classTypeUri: String, vars: Map<String, V
             insertedEdges.add(edge)
         }
 
-
         val ctx = paths.definingContextForVariable(v)
-
 
         // in the pure insertion case we have to assume that optional edges have not been created yet, so we'll include them in the insert set
         if(insert && !delete) {

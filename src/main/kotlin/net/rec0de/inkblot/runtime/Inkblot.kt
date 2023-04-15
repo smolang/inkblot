@@ -51,18 +51,10 @@ object Inkblot {
 }
 
 interface ChangeNode {
-    fun commitChange(endpoint: String)
     fun asUpdate(): UpdateRequest
 }
 
 abstract class ComplexChangeNode(private val update: UpdateRequest) : ChangeNode {
-    override fun commitChange(endpoint: String) {
-        val builder = UpdateExecHTTPBuilder.create()
-        builder.endpoint(endpoint)
-        builder.update(update)
-        println(update.toString())
-        builder.execute()
-    }
     override fun asUpdate() = update
 }
 
@@ -73,13 +65,6 @@ class CreateNode(update: UpdateRequest) : ComplexChangeNode(update)
 abstract class CommonChangeNode : ChangeNode
 
 abstract class CommonSPOChange(private val query: String, private val s: String, private val p: String, private val o: Node) : CommonChangeNode() {
-    override fun commitChange(endpoint: String) {
-        val builder = UpdateExecHTTPBuilder.create()
-        builder.endpoint(endpoint)
-        builder.update(asUpdate())
-        builder.execute()
-    }
-
     override fun asUpdate(): UpdateRequest {
         val template = ParameterizedSparqlString(query)
         template.setIri("s", s)
@@ -102,13 +87,6 @@ class CommonPropertyRemove(
 ) : CommonSPOChange("DELETE DATA { ?s ?p ?o }", objectUri, propertyUri, deleteValue)
 
 class CommonPropertyChange(private val objectUri: String, private val propertyUri: String, private val oldValue: Node, private val newValue: Node) : CommonChangeNode() {
-    override fun commitChange(endpoint: String) {
-        val builder = UpdateExecHTTPBuilder.create()
-        builder.endpoint(endpoint)
-        builder.update(asUpdate())
-        builder.execute()
-    }
-
     override fun asUpdate(): UpdateRequest {
         val template = ParameterizedSparqlString("DELETE { ?s ?p ?o } WHERE { ?s ?p ?o }; INSERT DATA { ?s ?p ?n }")
         template.setIri("s", objectUri)
@@ -120,13 +98,6 @@ class CommonPropertyChange(private val objectUri: String, private val propertyUr
 }
 
 class DeleteObject(private val uri: String) : CommonChangeNode() {
-    override fun commitChange(endpoint: String) {
-        val builder = UpdateExecHTTPBuilder.create()
-        builder.endpoint(endpoint)
-        builder.update(asUpdate())
-        builder.execute()
-    }
-
     override fun asUpdate(): UpdateRequest {
         // delete all triples where the deleted entity occurs either as subject or object
         val template = ParameterizedSparqlString("DELETE WHERE { ?a ?b ?c }; DELETE WHERE { ?d ?e ?a }")
@@ -136,13 +107,6 @@ class DeleteObject(private val uri: String) : CommonChangeNode() {
 }
 
 class RedirectDelete(private val oldUri: String, private val newUri: String) : CommonChangeNode() {
-    override fun commitChange(endpoint: String) {
-        val builder = UpdateExecHTTPBuilder.create()
-        builder.endpoint(endpoint)
-        builder.update(asUpdate())
-        builder.execute()
-    }
-
     override fun asUpdate(): UpdateRequest {
         // redirect all incoming edges to the replacement node
         // delete all outgoing edges (we assume these have been copied over before)

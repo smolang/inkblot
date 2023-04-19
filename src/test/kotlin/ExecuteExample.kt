@@ -44,10 +44,6 @@ internal class ExecuteExample {
         assertEquals(2023, bike.mfgYear)
         assertEquals("primary wheel", bike.frontWheel.mfgNames.first())
         assertEquals(3000.0, bike.frontWheel.diameter)
-
-        // delete our source file and generated sources to get fresh upstream files on next run
-        File("src/test/kotlin/ExecuteExample.kt").delete()
-        Path("src/test/kotlin/gen").forEachDirectoryEntry("*.kt") { it.deleteExisting() }
     }
 
     private fun testModifyBike(uri: String, wheels: List<Wheel>) {

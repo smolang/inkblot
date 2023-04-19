@@ -26,20 +26,27 @@ application {
     mainClass.set("MainKt")
 }
 
-sourceSets{
-    create("lib") {
-        java {
-            srcDirs("src/main/kotlin/net/rec0de/inkblot/runtime")
+val genTestSources by tasks.registering {
+    println("Generating test sources...")
+    doLast {
+        exec {
+            workingDir = buildDir
+            executable = "java"
+            args = mutableListOf("-jar", "libs/inkblot-1.0-SNAPSHOT-all.jar", "generate", "-p", "gen", "../src/test/resources/bike-example.json", "../src/test/kotlin/gen")
         }
     }
 }
 
-tasks.register<Jar>("runtimeJar") {
-    from(sourceSets["lib"].output)
-    archiveFileName.set("inkblot-runtime.jar")
+genTestSources {
+    dependsOn(tasks.shadowJar)
+    outputs.upToDateWhen { false }
 }
 
-val libImplementation by configurations.getting {}
+tasks.compileTestKotlin {
+    dependsOn(genTestSources)
+}
+
+
 
 dependencies {
     testImplementation(kotlin("test"))
@@ -48,5 +55,4 @@ dependencies {
     implementation("com.github.ajalt.clikt:clikt:3.5.0")
     implementation("org.slf4j:slf4j-nop:2.0.6")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0-RC")
-    libImplementation("org.apache.jena:apache-jena-libs:4.4.0")
 }

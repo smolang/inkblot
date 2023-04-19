@@ -2,26 +2,26 @@
     "Bike": {
         "anchor": "bike",
         "type": "http://example.com/ns/class",
-        "query": "PREFIX bk: <http://rec0de.net/ns/bike#> SELECT ?bike ?mfg ?fw ?bw ?bells WHERE { ?bike a bk:bike; bk:hasFrame _:b0. _:b0 bk:frontWheel ?fw OPTIONAL { ?bike bk:hasFrame _:b1. _:b1 bk:backWheel ?bw } OPTIONAL { ?bike bk:mfgDate ?mfg } OPTIONAL { ?bike bk:hasFrame _:b2. _:b2 bk:hasBell ?bells } }",
+        "query": "PREFIX bk: <http://rec0de.net/ns/bike#> SELECT ?bike ?mfg ?fw ?bw ?bells WHERE { ?bike a bk:bike; bk:hasFrame _:b0. _:b0 bk:frontWheel ?fw; bk:backWheel ?bw OPTIONAL { ?bike bk:mfgYear ?mfg } OPTIONAL { ?bike bk:hasFrame _:b1. _:b1 bk:hasBell ?bells } }",
         "properties": {
             "mfg": {
                 "sparql": "mfg",
-                "type": "http://example.com/ns/any",
+                "type": "[classnameOrXSD]",
                 "cardinality": "*"
             },
             "fw": {
                 "sparql": "fw",
-                "type": "http://example.com/ns/any",
+                "type": "[classnameOrXSD]",
                 "cardinality": "*"
             },
             "bw": {
                 "sparql": "bw",
-                "type": "http://example.com/ns/any",
+                "type": "[classnameOrXSD]",
                 "cardinality": "*"
             },
             "bells": {
                 "sparql": "bells",
-                "type": "http://example.com/ns/any",
+                "type": "[classnameOrXSD]",
                 "cardinality": "*"
             }
         }
@@ -29,21 +29,11 @@
     "Wheel": {
         "anchor": "wheel",
         "type": "http://example.com/ns/class",
-        "query": "PREFIX bk: <http://rec0de.net/ns/bike#> SELECT ?wheel ?dia ?mfgD ?mfgN WHERE { ?wheel a bk:wheel; bk:diameter ?dia OPTIONAL { ?wheel bk:mfgDate ?mfgD } OPTIONAL { ?wheel bk:mfgName ?mfgN } }",
+        "query": "PREFIX bk: <http://rec0de.net/ns/bike#> SELECT ?wheel ?diameter WHERE { ?wheel a bk:wheel; bk:diameter ?diameter }",
         "properties": {
-            "dia": {
-                "sparql": "dia",
-                "type": "http://example.com/ns/any",
-                "cardinality": "*"
-            },
-            "mfgD": {
-                "sparql": "mfgD",
-                "type": "http://example.com/ns/any",
-                "cardinality": "*"
-            },
-            "mfgN": {
-                "sparql": "mfgN",
-                "type": "http://example.com/ns/any",
+            "diameter": {
+                "sparql": "diameter",
+                "type": "[classnameOrXSD]",
                 "cardinality": "*"
             }
         }
@@ -55,7 +45,7 @@
         "properties": {
             "color": {
                 "sparql": "color",
-                "type": "http://example.com/ns/any",
+                "type": "[classnameOrXSD]",
                 "cardinality": "*"
             }
         }

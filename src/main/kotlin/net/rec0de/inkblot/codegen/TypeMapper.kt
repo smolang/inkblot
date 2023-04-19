@@ -2,13 +2,17 @@ package net.rec0de.inkblot.codegen
 
 object TypeMapper {
 
-    private val objectTypes = mutableMapOf<String, String>()
+    private val classNames = mutableSetOf<String>()
+    private val classNameToTypeURI = mutableMapOf<String, String>()
 
     fun registerClassType(rdfType: String, className: String) {
-        objectTypes[rdfType] = className
+        classNames.add(className)
+        classNameToTypeURI[className] = rdfType
     }
 
-    fun isObjectType(rdfType: String) = objectTypes.containsKey(rdfType)
+    fun isObjectType(className: String) = classNames.contains(className)
+
+    fun typeUriFor(className: String) = classNameToTypeURI[className]
 
     fun xsdToKotlinType(xsd: String): String {
         return when(val short = xsd.removePrefix("xsd:").removePrefix("http://www.w3.org/2001/XMLSchema#")) {
@@ -32,12 +36,15 @@ object TypeMapper {
             "positiveInteger" -> "BigInteger"
             "inkblot:rawObjectReference" -> "String"
             else -> {
-                if(objectTypes.containsKey(xsd))
-                    objectTypes[xsd]!!
-                else {
+                if(classNames.contains(xsd))
+                    xsd
+                // a type we do not fully support but know to be an xsd type and can provide string access to
+                else if(short != xsd) {
                     println("WARNING: Rendering unsupported literal type '$short' as String")
                     "String"
                 }
+                else
+                    throw Exception("Unsupported non-XSD type: '$xsd'")
             }
         }
     }

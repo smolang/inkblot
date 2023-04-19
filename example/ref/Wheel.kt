@@ -16,8 +16,8 @@ object WheelFactory : SemanticObjectFactory<Wheel>(
 ) {
     override val anchor = "wheel"
     override val query = ParameterizedSparqlString("PREFIX bk: <http://rec0de.net/ns/bike#> SELECT ?wheel ?dia ?mfgD ?mfgN WHERE { ?wheel a bk:wheel; bk:diameter ?dia OPTIONAL { ?wheel bk:mfgDate ?mfgD } OPTIONAL { ?wheel bk:mfgName ?mfgN } }")
-    private val initUpdate_mfgD = ParameterizedSparqlString("INSERT DATA { ?anchor <http://rec0de.net/ns/bike#mfgDate> ?v. }")
-    private val initUpdate_mfgN = ParameterizedSparqlString("INSERT DATA { ?anchor <http://rec0de.net/ns/bike#mfgName> ?v. }")
+    private val initUpdate_mfgD = ParameterizedSparqlString("INSERT { ?anchor <http://rec0de.net/ns/bike#mfgDate> ?n.  } WHERE {  }")
+    private val initUpdate_mfgN = ParameterizedSparqlString("INSERT { ?anchor <http://rec0de.net/ns/bike#mfgName> ?n.  } WHERE {  }")
     private val baseCreationUpdate = ParameterizedSparqlString("INSERT DATA { ?anchor <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://rec0de.net/ns/bike#wheel>. ?anchor <http://rec0de.net/ns/bike#diameter> ?dia. }")
     
     fun create(diameter: Double, mfgYear: Int?, mfgNames: List<String>): Wheel {
@@ -34,7 +34,7 @@ object WheelFactory : SemanticObjectFactory<Wheel>(
         if(mfgYear != null) {
             val partialUpdate = initUpdate_mfgD.copy()
             partialUpdate.setIri("anchor", uri)
-            partialUpdate.setParam("v", ResourceFactory.createTypedLiteral(mfgYear))
+            partialUpdate.setParam("n", ResourceFactory.createTypedLiteral(mfgYear))
             partialUpdate.asUpdate().forEach { update.add(it) }
         }
     
@@ -43,7 +43,7 @@ object WheelFactory : SemanticObjectFactory<Wheel>(
         mfgNames.forEach {
             val partialUpdate = initUpdate_mfgN.copy()
             partialUpdate.setIri("anchor", uri)
-            partialUpdate.setParam("v", ResourceFactory.createTypedLiteral(it))
+            partialUpdate.setParam("n", ResourceFactory.createTypedLiteral(it))
             partialUpdate.asUpdate().forEach { part -> update.add(part) }
         }
     
@@ -75,6 +75,9 @@ class Wheel internal constructor(uri: String, diameter: Double, mfgYear: Int?, m
         fun commitAndLoadSelected(filter: String) = WheelFactory.commitAndLoadSelected(filter)
         fun loadFromURI(uri: String) = WheelFactory.loadFromURI(uri)
     }
+    
+    override val deleteUpdate = ParameterizedSparqlString("DELETE WHERE { ?anchor ?b ?c }; DELETE WHERE { ?d ?e ?anchor }")
+    override val deleteRedirectUpdate = ParameterizedSparqlString("DELETE { ?s ?p ?anchor } INSERT { ?s ?p ?target } WHERE { ?s ?p ?anchor }; DELETE WHERE { ?anchor ?b ?c }")
     
     var diameter: Double = diameter
         set(value) {

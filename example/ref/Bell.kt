@@ -53,6 +53,9 @@ class Bell internal constructor(uri: String, color: String) : SemanticObject(uri
         fun loadFromURI(uri: String) = BellFactory.loadFromURI(uri)
     }
     
+    override val deleteUpdate = ParameterizedSparqlString("DELETE WHERE { ?anchor ?b ?c }; DELETE WHERE { ?d ?e ?anchor }")
+    override val deleteRedirectUpdate = ParameterizedSparqlString("DELETE { ?s ?p ?anchor } INSERT { ?s ?p ?target } WHERE { ?s ?p ?anchor }; DELETE WHERE { ?anchor ?b ?c }")
+    
     var color: String = color
         set(value) {
             if(deleted)

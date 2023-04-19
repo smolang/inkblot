@@ -87,6 +87,8 @@ internal class ExecuteExample {
         val builder = UpdateExecHTTPBuilder.create()
         builder.endpoint(Inkblot.endpoint)
         builder.update(UpdateFactory.create("DELETE {?s ?p ?o} WHERE {?s ?p ?o}"))
+
+
         builder.execute()
     }
 }

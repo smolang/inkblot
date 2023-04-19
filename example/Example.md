@@ -18,8 +18,8 @@ mv build/libs/inkblot-runtime.jar .
 Gather all your queries in a file, one line per query. In this example we'll generate the classes `Bike`, `Wheel` and `Bell` from the following queries in [queries.txt](queries.txt):
 
 ```sparql
-PREFIX bk: <http://rec0de.net/ns/bike#> SELECT ?bike ?mfg ?fw ?bw ?bells WHERE { ?bike a bk:bike; bk:hasFrame [bk:frontWheel ?fw] OPTIONAL { ?bike bk:hasFrame [bk:backWheel ?bw] } OPTIONAL { ?bike bk:mfgDate ?mfg } OPTIONAL { ?bike bk:hasFrame [bk:hasBell ?bells] } }
-PREFIX bk: <http://rec0de.net/ns/bike#> SELECT ?wheel ?dia ?mfgD ?mfgN WHERE { ?wheel a bk:wheel; bk:diameter ?dia. OPTIONAL { ?wheel bk:mfgDate ?mfgD } OPTIONAL {?wheel bk:mfgName ?mfgN } }
+PREFIX bk: <http://rec0de.net/ns/bike#> SELECT ?bike ?mfg ?fw ?bw ?bells { ?bike a bk:bike; bk:hasFrame [bk:frontWheel ?fw; bk:backWheel ?bw] OPTIONAL { ?bike bk:mfgYear ?mfg } OPTIONAL { ?bike bk:hasFrame [bk:hasBell ?bells] } }
+PREFIX bk: <http://rec0de.net/ns/bike#> SELECT ?wheel ?diameter { ?wheel a bk:wheel; bk:diameter ?diameter. }
 PREFIX bk: <http://rec0de.net/ns/bike#> SELECT ?bell ?color WHERE { ?bell a bk:bell; bk:color ?color }
 ```
 

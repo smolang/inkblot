@@ -34,8 +34,10 @@ object ValidatingSparqlGenerator {
         return if(v.xsdType == "inkblot:rawObjectReference") {
             "(bound(?${v.sparqlName}) && !isIRI(?${v.sparqlName}))"
         }
-        else if(v.isObjectReference)
-            "(bound(?${v.sparqlName}) && !(isIRI(?${v.sparqlName}) && EXISTS { ?${v.sparqlName} a <${v.xsdType}> }))"
+        else if(v.isObjectReference) {
+            val classTypeURI = TypeMapper.typeUriFor(v.kotlinType)!!
+            "(bound(?${v.sparqlName}) && !(isIRI(?${v.sparqlName}) && EXISTS { ?${v.sparqlName} a <$classTypeURI> }))"
+        }
         else {
             val expandedXsd = v.xsdType.replace("xsd:", "http://www.w3.org/2001/XMLSchema#")
             "(bound(?${v.sparqlName}) && datatype(?${v.sparqlName}) != <$expandedXsd>)"

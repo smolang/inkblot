@@ -17,9 +17,9 @@ object BikeFactory : SemanticObjectFactory<Bike>(
 ) {
     override val anchor = "bike"
     override val query = ParameterizedSparqlString("PREFIX bk: <http://rec0de.net/ns/bike#> SELECT ?bike ?mfg ?fw ?bw ?bells WHERE { ?bike a bk:bike; bk:hasFrame _:b0. _:b0 bk:frontWheel ?fw OPTIONAL { ?bike bk:hasFrame _:b1. _:b1 bk:backWheel ?bw } OPTIONAL { ?bike bk:mfgDate ?mfg } OPTIONAL { ?bike bk:hasFrame _:b2. _:b2 bk:hasBell ?bells } }")
-    private val initUpdate_bw = ParameterizedSparqlString("INSERT DATA { ?anchor <http://rec0de.net/ns/bike#hasFrame> _:b5. _:b5 <http://rec0de.net/ns/bike#backWheel> ?v. }")
-    private val initUpdate_bells = ParameterizedSparqlString("INSERT DATA { ?anchor <http://rec0de.net/ns/bike#hasFrame> _:b6. _:b6 <http://rec0de.net/ns/bike#hasBell> ?v. }")
-    private val initUpdate_mfg = ParameterizedSparqlString("INSERT DATA { ?anchor <http://rec0de.net/ns/bike#mfgDate> ?v. }")
+    private val initUpdate_bw = ParameterizedSparqlString("INSERT { ?inkblt1 <http://rec0de.net/ns/bike#backWheel> ?n. ?anchor <http://rec0de.net/ns/bike#hasFrame> ?inkblt1. } WHERE {  }")
+    private val initUpdate_bells = ParameterizedSparqlString("INSERT { ?inkblt2 <http://rec0de.net/ns/bike#hasBell> ?n. ?anchor <http://rec0de.net/ns/bike#hasFrame> ?inkblt2. } WHERE {  }")
+    private val initUpdate_mfg = ParameterizedSparqlString("INSERT { ?anchor <http://rec0de.net/ns/bike#mfgDate> ?n.  } WHERE {  }")
     private val baseCreationUpdate = ParameterizedSparqlString("INSERT DATA { ?anchor <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://rec0de.net/ns/bike#bike>. ?anchor <http://rec0de.net/ns/bike#hasFrame> _:b4. _:b4 <http://rec0de.net/ns/bike#frontWheel> ?fw. }")
     
     fun create(frontWheel: Wheel, backWheel: Wheel?, bells: List<Bell>, mfgYear: Int?): Bike {
@@ -36,14 +36,14 @@ object BikeFactory : SemanticObjectFactory<Bike>(
         if(backWheel != null) {
             val partialUpdate = initUpdate_bw.copy()
             partialUpdate.setIri("anchor", uri)
-            partialUpdate.setIri("v", backWheel.uri)
+            partialUpdate.setIri("n", backWheel.uri)
             partialUpdate.asUpdate().forEach { update.add(it) }
         }
     
         if(mfgYear != null) {
             val partialUpdate = initUpdate_mfg.copy()
             partialUpdate.setIri("anchor", uri)
-            partialUpdate.setParam("v", ResourceFactory.createTypedLiteral(mfgYear))
+            partialUpdate.setParam("n", ResourceFactory.createTypedLiteral(mfgYear))
             partialUpdate.asUpdate().forEach { update.add(it) }
         }
     
@@ -52,7 +52,7 @@ object BikeFactory : SemanticObjectFactory<Bike>(
         bells.forEach {
             val partialUpdate = initUpdate_bells.copy()
             partialUpdate.setIri("anchor", uri)
-            partialUpdate.setIri("v", it.uri)
+            partialUpdate.setIri("n", it.uri)
             partialUpdate.asUpdate().forEach { part -> update.add(part) }
         }
     
@@ -86,6 +86,9 @@ class Bike internal constructor(uri: String, frontWheel: String, backWheel: Stri
         fun loadFromURI(uri: String) = BikeFactory.loadFromURI(uri)
     }
     
+    override val deleteUpdate = ParameterizedSparqlString("DELETE WHERE { ?anchor ?b ?c }; DELETE WHERE { ?d ?e ?anchor }")
+    override val deleteRedirectUpdate = ParameterizedSparqlString("DELETE { ?s ?p ?anchor } INSERT { ?s ?p ?target } WHERE { ?s ?p ?anchor }; DELETE WHERE { ?anchor ?b ?c }")
+    
     private var _inkbltRef_frontWheel: String = frontWheel
     var frontWheel: Wheel
         get() = Wheel.loadFromURI(_inkbltRef_frontWheel)
@@ -93,7 +96,7 @@ class Bike internal constructor(uri: String, frontWheel: String, backWheel: Stri
         if(deleted)
             throw Exception("Trying to set property 'frontWheel' on deleted object <$uri>")
     
-        val template = ParameterizedSparqlString("DELETE { ?inkblt0 <http://rec0de.net/ns/bike#frontWheel> ?o. } INSERT { ?inkblt0 <http://rec0de.net/ns/bike#frontWheel> ?n. } WHERE { ?anchor <http://rec0de.net/ns/bike#hasFrame> ?inkblt0. ?inkblt0 <http://rec0de.net/ns/bike#frontWheel> _:b7. }")
+        val template = ParameterizedSparqlString("DELETE { ?inkblt0 <http://rec0de.net/ns/bike#frontWheel> ?o. } INSERT { ?inkblt0 <http://rec0de.net/ns/bike#frontWheel> ?n. } WHERE { ?anchor <http://rec0de.net/ns/bike#hasFrame> ?inkblt0. ?inkblt0 <http://rec0de.net/ns/bike#frontWheel> _:b5. }")
         template.setIri("anchor", uri)
         template.setParam("o", ResourceFactory.createResource(_inkbltRef_frontWheel).asNode())
         template.setParam("n", ResourceFactory.createResource(value.uri).asNode())
@@ -120,7 +123,7 @@ class Bike internal constructor(uri: String, frontWheel: String, backWheel: Stri
             if(value == null) {
                 // Unset value
                 val oldValueNode = ResourceFactory.createResource(_inkbltRef_backWheel).asNode()
-                val template = ParameterizedSparqlString("DELETE { ?inkblt1 <http://rec0de.net/ns/bike#backWheel> ?o. } WHERE { ?anchor <http://rec0de.net/ns/bike#hasFrame> ?inkblt1. ?inkblt1 <http://rec0de.net/ns/bike#backWheel> _:b8. }")
+                val template = ParameterizedSparqlString("DELETE { ?inkblt1 <http://rec0de.net/ns/bike#backWheel> ?o. } WHERE { ?anchor <http://rec0de.net/ns/bike#hasFrame> ?inkblt1. ?inkblt1 <http://rec0de.net/ns/bike#backWheel> _:b6. }")
                 template.setIri("anchor", uri)
                 template.setParam("o", oldValueNode)
                 val cn = ComplexPropertyRemove(template.asUpdate())
@@ -129,7 +132,7 @@ class Bike internal constructor(uri: String, frontWheel: String, backWheel: Stri
             else if(_inkbltRef_backWheel == null) {
                 // Pure insertion
                 val newValueNode = ResourceFactory.createResource(value?.uri).asNode()
-                val template = ParameterizedSparqlString("INSERT { ?inkblt1 <http://rec0de.net/ns/bike#backWheel> ?n. } WHERE { ?anchor <http://rec0de.net/ns/bike#hasFrame> ?inkblt1. }")
+                val template = ParameterizedSparqlString("INSERT { ?inkblt1 <http://rec0de.net/ns/bike#backWheel> ?n. ?anchor <http://rec0de.net/ns/bike#hasFrame> ?inkblt1. } WHERE {  }")
                 template.setIri("anchor", uri)
                 template.setParam("n", newValueNode)
                 val cn = ComplexPropertyAdd(template.asUpdate())
@@ -139,7 +142,7 @@ class Bike internal constructor(uri: String, frontWheel: String, backWheel: Stri
                 // Change value
                 val oldValueNode = ResourceFactory.createResource(_inkbltRef_backWheel).asNode()
                 val newValueNode = ResourceFactory.createResource(value?.uri).asNode()
-                val template = ParameterizedSparqlString("DELETE { ?inkblt1 <http://rec0de.net/ns/bike#backWheel> ?o. } INSERT { ?inkblt1 <http://rec0de.net/ns/bike#backWheel> ?n. } WHERE { ?anchor <http://rec0de.net/ns/bike#hasFrame> ?inkblt1. ?inkblt1 <http://rec0de.net/ns/bike#backWheel> _:b9. }")
+                val template = ParameterizedSparqlString("DELETE { ?inkblt1 <http://rec0de.net/ns/bike#backWheel> ?o. } INSERT { ?inkblt1 <http://rec0de.net/ns/bike#backWheel> ?n. } WHERE { ?anchor <http://rec0de.net/ns/bike#hasFrame> ?inkblt1. ?inkblt1 <http://rec0de.net/ns/bike#backWheel> _:b7. }")
                 template.setIri("anchor", uri)
                 template.setParam("o", oldValueNode)
                 template.setParam("n", newValueNode)
@@ -160,7 +163,7 @@ class Bike internal constructor(uri: String, frontWheel: String, backWheel: Stri
             throw Exception("Trying to set property 'bells' on deleted object <$uri>")
         _inkbltRef_bells.add(obj.uri)
     
-        val template = ParameterizedSparqlString("INSERT { ?inkblt2 <http://rec0de.net/ns/bike#hasBell> ?n. } WHERE { ?anchor <http://rec0de.net/ns/bike#hasFrame> ?inkblt2. }")
+        val template = ParameterizedSparqlString("INSERT { ?inkblt2 <http://rec0de.net/ns/bike#hasBell> ?n. ?anchor <http://rec0de.net/ns/bike#hasFrame> ?inkblt2. } WHERE {  }")
         template.setIri("anchor", uri)
         template.setParam("n", ResourceFactory.createResource(obj.uri).asNode())
         val cn = ComplexPropertyAdd(template.asUpdate())
@@ -173,7 +176,7 @@ class Bike internal constructor(uri: String, frontWheel: String, backWheel: Stri
             throw Exception("Trying to set property 'bells' on deleted object <$uri>")
         _inkbltRef_bells.remove(obj.uri)
     
-        val template = ParameterizedSparqlString("DELETE { ?inkblt2 <http://rec0de.net/ns/bike#hasBell> ?o. } WHERE { ?anchor <http://rec0de.net/ns/bike#hasFrame> ?inkblt2. ?inkblt2 <http://rec0de.net/ns/bike#hasBell> _:b10. }")
+        val template = ParameterizedSparqlString("DELETE { ?inkblt2 <http://rec0de.net/ns/bike#hasBell> ?o. } WHERE { ?anchor <http://rec0de.net/ns/bike#hasFrame> ?inkblt2. ?inkblt2 <http://rec0de.net/ns/bike#hasBell> _:b8. }")
         template.setIri("anchor", uri)
         template.setParam("o", ResourceFactory.createResource(obj.uri).asNode())
         val cn = ComplexPropertyRemove(template.asUpdate())

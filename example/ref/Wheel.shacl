@@ -1,4 +1,4 @@
-<http://rec0de.net/ns/inkblot#SHACL-5cx7vgi-a5pv4rj7> a sh:NodeShape;
+<http://rec0de.net/ns/inkblot#SHACL-5j7wbeq-bvhzlibp> a sh:NodeShape;
 sh:targetClass <http://rec0de.net/ns/bike#wheel>;
 sh:property [
 	sh:datatype <http://www.w3.org/2001/XMLSchema#double>;

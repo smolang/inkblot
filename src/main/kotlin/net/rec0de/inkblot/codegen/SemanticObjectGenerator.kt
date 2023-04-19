@@ -55,8 +55,6 @@ class SemanticObjectGenerator(
         ) {
             override val anchor = "$anchor"
             override val query = ParameterizedSparqlString("${escape(stringQuery)}")
-            override val deleteUpdate = ParameterizedSparqlString("${escape(synthesizer.deleteUpdate())}")
-            override val deleteRedirectUpdate = ParameterizedSparqlString("${escape(synthesizer.deleteRedirectUpdate())}")
             ${indent(genInitializerQueries(), 3)}
             
             ${indent(genFactoryCreate(), 3)}
@@ -254,6 +252,9 @@ class SemanticObjectGenerator(
                     fun commitAndLoadSelected(filter: String) = ${className}Factory.commitAndLoadSelected(filter)
                     fun loadFromURI(uri: String) = ${className}Factory.loadFromURI(uri)
                 }
+                
+                override val deleteUpdate = ParameterizedSparqlString("${escape(synthesizer.deleteUpdate())}")
+                override val deleteRedirectUpdate = ParameterizedSparqlString("${escape(synthesizer.deleteRedirectUpdate())}")
                 
                 ${indent(genProperties(), 4)}
                 

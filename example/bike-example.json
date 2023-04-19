@@ -6,16 +6,16 @@
 		"properties": {
 			"frontWheel" : {
 				"sparql": "fw",
-				"type": "http://rec0de.net/ns/bike#wheel",
+				"type": "Wheel",
 				"cardinality": "!"
 			},
 			"backWheel" : {
 				"sparql": "bw",
-				"type": "http://rec0de.net/ns/bike#wheel",
+				"type": "Wheel",
 				"cardinality": "?"
 			},
 			"bells" : {
-				"type": "http://rec0de.net/ns/bike#bell",
+				"type": "Bell",
 				"cardinality": "*"
 			},
 			"mfgYear" : {

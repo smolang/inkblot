@@ -17,8 +17,9 @@ For a full usage example including all example files and outputs, see [Example.m
 Write one query for each class you'd like to have in the generated library. For example:
 
 ```sparql
-PREFIX ex: <http://e.x/> SELECT ?bike ?frontWheel ?backWheel ?color WHERE { ?bike a ex:bike; ex:hasWheel ?frontWheel, ?backWheel. ?frontWheel ex:inFrontOf ?backWheel }
-PREFIX ex: <http://e.x/> SELECT ?wheel ?diameter WHERE { ?wheel a ex:wheel; ex:diameter ?diameter }
+PREFIX bk: <http://rec0de.net/ns/bike#> SELECT ?bike ?mfg ?fw ?bw ?bells { ?bike a bk:bike; bk:hasFrame [bk:frontWheel ?fw; bk:backWheel ?bw] OPTIONAL { ?bike bk:mfgYear ?mfg } OPTIONAL { ?bike bk:hasFrame [bk:hasBell ?bells] } }
+PREFIX bk: <http://rec0de.net/ns/bike#> SELECT ?wheel ?diameter { ?wheel a bk:wheel; bk:diameter ?diameter. }
+PREFIX bk: <http://rec0de.net/ns/bike#> SELECT ?bell ?color WHERE { ?bell a bk:bell; bk:color ?color }
 ```
 
 From these queries we can generate a configuration template:
@@ -48,21 +49,26 @@ This will create the file `bikes.json` that looks something like this:
     "Bike": {
         "anchor": "bike",
         "type": "http://example.com/ns/class",
-        "query": "PREFIX ex: <http://e.x/> SELECT ?bike ?frontWheel ?backWheel ?color WHERE { ?bike a ex:bike; ex:hasWheel ?frontWheel; ex:hasWheel ?backWheel. ?frontWheel ex:inFrontOf ?backWheel }",
+        "query": "PREFIX bk: <http://rec0de.net/ns/bike#> SELECT ?bike ?mfg ?fw ?bw ?bells WHERE { ?bike a bk:bike; bk:hasFrame _:b0. _:b0 bk:frontWheel ?fw; bk:backWheel ?bw OPTIONAL { ?bike bk:mfgYear ?mfg } OPTIONAL { ?bike bk:hasFrame _:b1. _:b1 bk:hasBell ?bells } }",
         "properties": {
-            "frontWheel": {
-                "sparql": "frontWheel",
-                "type": "http://example.com/ns/any",
+            "mfg": {
+                "sparql": "mfg",
+                "type": "[classnameOrXSD]",
                 "cardinality": "*"
             },
-            "backWheel": {
-                "sparql": "backWheel",
-                "type": "http://example.com/ns/any",
+            "fw": {
+                "sparql": "fw",
+                "type": "[classnameOrXSD]",
                 "cardinality": "*"
             },
-            "color": {
-                "sparql": "color",
-                "type": "http://example.com/ns/any",
+            "bw": {
+                "sparql": "bw",
+                "type": "[classnameOrXSD]",
+                "cardinality": "*"
+            },
+            "bells": {
+                "sparql": "bells",
+                "type": "[classnameOrXSD]",
                 "cardinality": "*"
             }
         }
@@ -70,11 +76,23 @@ This will create the file `bikes.json` that looks something like this:
     "Wheel": {
         "anchor": "wheel",
         "type": "http://example.com/ns/class",
-        "query": "PREFIX ex: <http://e.x/> SELECT ?wheel ?diameter WHERE { ?wheel a ex:wheel; ex:diameter ?diameter }",
+        "query": "PREFIX bk: <http://rec0de.net/ns/bike#> SELECT ?wheel ?diameter WHERE { ?wheel a bk:wheel; bk:diameter ?diameter }",
         "properties": {
             "diameter": {
                 "sparql": "diameter",
-                "type": "http://example.com/ns/any",
+                "type": "[classnameOrXSD]",
+                "cardinality": "*"
+            }
+        }
+    },
+    "Bell": {
+        "anchor": "bell",
+        "type": "http://example.com/ns/class",
+        "query": "PREFIX bk: <http://rec0de.net/ns/bike#> SELECT ?bell ?color WHERE { ?bell a bk:bell; bk:color ?color }",
+        "properties": {
+            "color": {
+                "sparql": "color",
+                "type": "[classnameOrXSD]",
                 "cardinality": "*"
             }
         }
@@ -87,7 +105,7 @@ We can now fill in some additional details:
 * Change property names (while keeping the 'sparql' key the same). This will change the property names in the generated code.
 * Similarly, change class names (while keeping the 'anchor' key the same).
 * Add type information to classes. This is necessary for inkblot to recognize object references. For example, change the type of `Bike` to `http://e.x/bike` in this example.
-* Add type information to properties. For references, use the type annotated in the corresponding class. For data types, use xsd types, either as URI or with the `xsd:` prefix. For references that you want to treat as simple strings in the generated code, use `inkblot:rawObjectReference`.
+* Add type information to properties. For references, use the type annotated in the corresponding class. For data types, use xsd types, either as URI or with the `xsd:` prefix. For references that you want to treat as simple strings in the generated code, use `inkblot:rawObjectReference`. For object references use the name of the referenced class (e.g. 'Bike', 'Bell', 'Wheel').
 * Change cardinality information. By default, inkblot expects that a property can have arbitrarily many values, which will be rendered as a list. To assert that a property can only have one value (i.e. is functional), set cardinality to `!` for exactly one or `?` for zero or one.
 
 With all that filled in, we are ready to generate our library:

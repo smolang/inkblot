@@ -4,7 +4,7 @@ Inkblot generates object-oriented libraries for semantic data access.
 
 ## Setup
 
-Run `./gradlew shadowJar` to assemble an executable jar containing the inkblot library generation tool. To obtain a jar containing the inkblot runtime, run `./gradlew runtimeJar`. Generated files are located in `build/libs/`. For information on automated tests, see [Testing.md](src/test/Testing.md).
+Run `./gradlew shadowJar` to assemble an executable jar containing the inkblot library generation tool. To obtain a jar containing the inkblot runtime, run `./gradlew runtimeJar`. Generated files are located in `build/libs/`.
 
 To use generated libraries, add the generated files to your project source tree and add the inkblot runtime jar as a dependency. Inkblot also requires [Jena](https://jena.apache.org/) to run.
 

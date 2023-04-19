@@ -7,10 +7,6 @@ import org.apache.jena.update.UpdateFactory
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
-import java.io.File
-import kotlin.io.path.Path
-import kotlin.io.path.deleteExisting
-import kotlin.io.path.forEachDirectoryEntry
 
 internal class ExecuteExample {
 

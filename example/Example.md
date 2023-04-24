@@ -28,7 +28,7 @@ PREFIX bk: <http://rec0de.net/ns/bike#> SELECT ?bell ?color WHERE { ?bell a bk:b
 While we can always write our configuration files by hand, it's usually faster to generate a template. Note that this assumes the first SPARQL variable in each query to be the anchor.
 
 ```bash
-java -jar inkblot.jar configure queries.txt config.json
+java -jar inkblot.jar configure example/queries.txt example/config.json
 ```
 
 Fill in the type and cardinality details in the generated `config.json` file to your liking. For a completed example config, see [bike-example.json](bike-example.json). Refer to the [readme](../README.md#usage) for details on how to fill in the necessary details.
@@ -38,13 +38,13 @@ Fill in the type and cardinality details in the generated `config.json` file to 
 With the configuration completed, we can generate the actual library code. A minimal command to assemble the library in the `gen` folder looks like this:
 
 ```bash
-java -jar inkblot.jar generate config.json gen
+java -jar inkblot.jar generate example/config.json example/gen
 ```
 
 To add wrappers for the generated classes and be more explicit about things, we can use this more verbose command:
 
 ```bash
-java -jar inkblot.jar generate --wrappers --namespace "http://rec0de.net/ns/bike#" --package "gen" config.json gen
+java -jar inkblot.jar generate --wrappers --namespace "http://rec0de.net/ns/bike#" --package "gen" example/config.json example/gen
 ```
 
 The second command should produce the same files you can find in the [reference folder](ref), possibly with minor changes if you made different decisions in filling in the configuration template.

@@ -2,6 +2,7 @@ package net.rec0de.inkblot.reasoning
 
 import org.apache.jena.query.Query
 
+// Check that input query conforms to constraints (connectedness, unambiguous writeback) and determine which properties are 'simple'
 class VariablePathAnalysis(query: Query, val anchor: String) {
 
     val resultVars = query.resultVars.toSet()
@@ -46,7 +47,7 @@ class VariablePathAnalysis(query: Query, val anchor: String) {
             while(stacks.size > 0) {
                 // first item in the list must be a distinct binding since it is the shortest stack by length and thus cannot have another item as a prefix
                 val top = stacks.removeFirst()
-                // if we have a binding near the top of the stack, all bindings in sub-contexts are safe (I think. I don't actually know how SPARQL works here exactly)
+                // if we have a binding near the top of the stack, all bindings in sub-contexts are safe
                 stacks.removeAll { it.startsWith(top) }
                 distinctBindings.add(top)
             }

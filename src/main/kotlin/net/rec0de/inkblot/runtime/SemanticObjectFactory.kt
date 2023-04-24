@@ -6,6 +6,10 @@ import org.apache.jena.sparql.syntax.ElementFilter
 import org.apache.jena.sparql.syntax.ElementGroup
 import org.apache.jena.sparql.util.ExprUtils
 
+/*
+Common functionality shared across all factory classes.
+Contains large parts of object instantiation logic and data loading functions. Also handles on-line data validation using generated SPARQL queries.
+ */
 abstract class SemanticObjectFactory<Obj>(validateQueries: List<String>, private val debugName: String) {
     protected abstract val anchor: String
     protected abstract val query: ParameterizedSparqlString
@@ -19,11 +23,6 @@ abstract class SemanticObjectFactory<Obj>(validateQueries: List<String>, private
 
     // Run validation queries to check that our assumptions about types / multiplicities match reality
     fun validateOnlineData(exceptionOnFailure: Boolean = false) {
-        if(validatingQueries.size == 1)
-            println("Running 1 validation query for $debugName")
-        else
-            println("Running ${validatingQueries.size} validation queries for $debugName")
-
         validatingQueries.forEach { query ->
             val execCtx = QueryExecutionHTTP.service(Inkblot.endpoint, query)
             val res = execCtx.execSelect()

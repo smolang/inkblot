@@ -6,6 +6,7 @@ import org.apache.jena.query.Query
 import org.apache.jena.query.QuerySolution
 import org.apache.jena.sparql.exec.http.QueryExecutionHTTPBuilder
 
+// unsupported analysis using OWL specification found at the specified endpoint to guess sensible configuration values, use with caution
 class ForbiddenMagicAnalysis(private val endpoint: String) {
 
     private val functionalProperties = getFunctionalProperties()
@@ -48,8 +49,6 @@ class ForbiddenMagicAnalysis(private val endpoint: String) {
         val rangePredicatesSparql = rangeRelevantPredicates.joinToString(" "){ "<$it>" }
         val domainPredicatesSparql = domainRelevantPredicates.joinToString(" "){ "<$it>" }
 
-        // there might be a SPARQL injection here, but they are probably all over the place anyway so ¯\_(ツ)_/¯
-        // predicates are also kind of trusted input since they come from a valid query object - should be fine?
         val domainQuery = ParameterizedSparqlString("SELECT ?rel ?dom WHERE { VALUES ?rel { $domainPredicatesSparql } ?rel <http://www.w3.org/2000/01/rdf-schema#domain> ?dom }")
         val rangeQuery = ParameterizedSparqlString("SELECT ?rel ?range WHERE { VALUES ?rel { $rangePredicatesSparql } ?rel <http://www.w3.org/2000/01/rdf-schema#range> ?range }")
 

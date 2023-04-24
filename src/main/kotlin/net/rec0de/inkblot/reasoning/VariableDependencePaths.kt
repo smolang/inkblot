@@ -2,6 +2,7 @@ package net.rec0de.inkblot.reasoning
 
 import org.apache.jena.graph.Node
 
+// Compute simple paths between variables in a SPARQL query
 object VariableDependencePaths {
 
     private val visited = mutableSetOf<String>()
@@ -123,6 +124,7 @@ data class VarDependency(
 
 }
 
+// Variable dependencies themselves don't contain info about the 'direction' of the edge, which we need
 data class VarDepEdge(val dependency: VarDependency, val backward: Boolean) {
     val source: String
         get() = if(backward) dependency.o else dependency.s

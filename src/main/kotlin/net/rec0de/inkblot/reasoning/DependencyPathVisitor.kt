@@ -3,6 +3,7 @@ package net.rec0de.inkblot.reasoning
 import org.apache.jena.graph.Triple
 import org.apache.jena.sparql.syntax.*
 
+// traverse SPARQL AST, check if all language constructs are supported & gather required information from query
 class DependencyPathVisitor : ElementVisitorBase() {
 
     // we need to keep track of whether we are in an optional block to know which fields of our object are nullable

@@ -2,6 +2,10 @@ package net.rec0de.inkblot.runtime
 
 import org.apache.jena.query.ParameterizedSparqlString
 
+/*
+Common functionality shared across all generated classes (all generated core classes inherit from SemanticObject).
+Contains logic for runtime cache management and object deletion.
+ */
 abstract class SemanticObject(val uri: String) {
     protected var deleted = false
     private var dirty = false
@@ -9,8 +13,8 @@ abstract class SemanticObject(val uri: String) {
     protected abstract val deleteRedirectUpdate: ParameterizedSparqlString
 
     init {
-        // compiler tells me this is bad because we're pushing a potentially unfinished object to cache
-        // we'll see if this will come back to bite us at some point
+        // the compiler does not like this because we're pushing a potentially unfinished object to cache
+        // should work fine for our use-case though since the cache should not be referenced before initialization is completed
         Inkblot.loadedObjects[uri] = this // update object cache
     }
 

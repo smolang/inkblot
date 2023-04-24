@@ -2,7 +2,7 @@
 	"Bike": {
 		"type": "http://rec0de.net/ns/bike#bike",
 		"anchor": "bike",
-		"query": "PREFIX bk: <http://rec0de.net/ns/bike#> SELECT ?bike ?mfg ?fw ?bw ?bells WHERE { ?bike a bk:bike; bk:hasFrame [bk:frontWheel ?fw] OPTIONAL { ?bike bk:hasFrame [bk:backWheel ?bw] } OPTIONAL { ?bike bk:mfgDate ?mfg } OPTIONAL { ?bike bk:hasFrame [bk:hasBell ?bells] } }",
+        "query": "PREFIX bk: <http://rec0de.net/ns/bike#> SELECT ?bike ?mfg ?fw ?bw ?bells WHERE { ?bike a bk:bike; bk:hasFrame _:b0. _:b0 bk:frontWheel ?fw; bk:backWheel ?bw OPTIONAL { ?bike bk:mfgYear ?mfg } OPTIONAL { ?bike bk:hasFrame _:b1. _:b1 bk:hasBell ?bells } }",
 		"properties": {
 			"frontWheel" : {
 				"sparql": "fw",
@@ -12,7 +12,7 @@
 			"backWheel" : {
 				"sparql": "bw",
 				"type": "Wheel",
-				"cardinality": "?"
+				"cardinality": "!"
 			},
 			"bells" : {
 				"type": "Bell",

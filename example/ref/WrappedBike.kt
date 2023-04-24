@@ -6,7 +6,7 @@ class WrappedBike(private val bike: Bike) {
         get() = bike.frontWheel
         set(value) { bike.frontWheel = value }
     
-    var backWheel: Wheel?
+    var backWheel: Wheel
         get() = bike.backWheel
         set(value) { bike.backWheel = value }
     

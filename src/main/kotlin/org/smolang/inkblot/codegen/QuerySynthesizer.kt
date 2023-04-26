@@ -1,9 +1,8 @@
-package net.rec0de.inkblot.codegen
+package org.smolang.inkblot.codegen
 
-import net.rec0de.inkblot.reasoning.VarDependency
-import net.rec0de.inkblot.reasoning.VarDepEdge
-import net.rec0de.inkblot.reasoning.VariablePathAnalysis
-import net.rec0de.inkblot.reasoning.VariableProperties
+import org.smolang.inkblot.reasoning.VarDependency
+import org.smolang.inkblot.reasoning.VariablePathAnalysis
+import org.smolang.inkblot.reasoning.VariableProperties
 
 class QuerySynthesizer(anchor: String, classTypeUri: String, vars: Map<String, VariableProperties>, paths: VariablePathAnalysis, queryMap: MutableMap<String, String>): AbstractQuerySynthesizer(anchor, classTypeUri, vars, paths, queryMap) {
 

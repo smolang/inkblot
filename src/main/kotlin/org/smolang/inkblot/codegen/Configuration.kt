@@ -1,4 +1,4 @@
-package net.rec0de.inkblot.codegen
+package org.smolang.inkblot.codegen
 
 import kotlinx.serialization.Serializable
 

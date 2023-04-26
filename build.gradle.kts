@@ -7,7 +7,7 @@ plugins {
     application
 }
 
-group = "net.rec0de.inkblot"
+group = "org.smolang.inkblot"
 version = "1.0-SNAPSHOT"
 
 repositories {

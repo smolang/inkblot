@@ -1,4 +1,4 @@
-package net.rec0de.inkblot.codegen
+package org.smolang.inkblot.codegen
 
 class ChangeNodeGenerator(private val synthesizer: AbstractQuerySynthesizer) {
     fun changeCN(anchorUriVar: String, sparqlVariable: String, oldValueExpr: String, newValueExpr: String): String {

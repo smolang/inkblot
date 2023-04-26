@@ -1,6 +1,6 @@
 package ref
 
-import net.rec0de.inkblot.runtime.*
+import org.smolang.inkblot.runtime.*
 import org.apache.jena.query.ParameterizedSparqlString
 import org.apache.jena.query.QuerySolution
 import org.apache.jena.rdf.model.ResourceFactory

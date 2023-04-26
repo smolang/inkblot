@@ -1,4 +1,4 @@
-package net.rec0de.inkblot.reasoning
+package org.smolang.inkblot.reasoning
 
 import org.apache.jena.graph.Triple
 import org.apache.jena.sparql.syntax.*

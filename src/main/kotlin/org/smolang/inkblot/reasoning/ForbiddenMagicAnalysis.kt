@@ -1,6 +1,6 @@
-package net.rec0de.inkblot.reasoning
+package org.smolang.inkblot.reasoning
 
-import net.rec0de.inkblot.codegen.PropertyConfig
+import org.smolang.inkblot.codegen.PropertyConfig
 import org.apache.jena.query.ParameterizedSparqlString
 import org.apache.jena.query.Query
 import org.apache.jena.query.QuerySolution

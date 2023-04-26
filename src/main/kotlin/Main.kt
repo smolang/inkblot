@@ -4,13 +4,13 @@ import com.github.ajalt.clikt.parameters.arguments.argument
 import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.option
-import net.rec0de.inkblot.reasoning.VariablePathAnalysis
-import net.rec0de.inkblot.reasoning.VariableProperties
+import org.smolang.inkblot.reasoning.VariablePathAnalysis
+import org.smolang.inkblot.reasoning.VariableProperties
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import net.rec0de.inkblot.codegen.*
 import org.apache.jena.query.ParameterizedSparqlString
+import org.smolang.inkblot.codegen.*
 import java.io.File
 import kotlin.io.path.Path
 import kotlin.io.path.exists

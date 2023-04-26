@@ -1,4 +1,4 @@
-<http://rec0de.net/ns/inkblot#SHACL-5lboyoa-p4bs4c2v> a sh:NodeShape;
+<http://rec0de.net/ns/inkblot#SHACL-5lnrhxq-uyam5zc3> a sh:NodeShape;
 sh:targetClass <http://rec0de.net/ns/bike#bike>;
 sh:property [
 	sh:nodeKind sh:IRI;

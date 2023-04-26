@@ -1,6 +1,8 @@
-package net.rec0de.inkblot.runtime
+package org.smolang.inkblot.runtime
 
 import org.apache.jena.query.ParameterizedSparqlString
+import org.smolang.inkblot.runtime.ComplexDelete
+import org.smolang.inkblot.runtime.Inkblot
 
 /*
 Common functionality shared across all generated classes (all generated core classes inherit from SemanticObject).

@@ -1,4 +1,4 @@
-package net.rec0de.inkblot.runtime
+package org.smolang.inkblot.runtime
 
 // Listener interface to be used with addConstraintListener/removeConstraintListener methods on the runtime object
 interface ConstraintViolationListener {

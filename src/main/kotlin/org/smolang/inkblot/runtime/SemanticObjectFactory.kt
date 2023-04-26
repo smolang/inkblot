@@ -1,4 +1,4 @@
-package net.rec0de.inkblot.runtime
+package org.smolang.inkblot.runtime
 
 import org.apache.jena.query.*
 import org.apache.jena.sparql.exec.http.QueryExecutionHTTP

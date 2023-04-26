@@ -1,7 +1,7 @@
 import gen.Bell
 import gen.Bike
 import gen.Wheel
-import net.rec0de.inkblot.runtime.Inkblot
+import org.smolang.inkblot.runtime.Inkblot
 import org.apache.jena.sparql.exec.http.UpdateExecHTTPBuilder
 import org.apache.jena.update.UpdateFactory
 import kotlin.test.Test

@@ -1,7 +1,7 @@
-package net.rec0de.inkblot.codegen
+package org.smolang.inkblot.codegen
 
-import net.rec0de.inkblot.reasoning.VariablePathAnalysis
-import net.rec0de.inkblot.reasoning.VariableProperties
+import org.smolang.inkblot.reasoning.VariablePathAnalysis
+import org.smolang.inkblot.reasoning.VariableProperties
 
 abstract class AbstractQuerySynthesizer(
     val anchor: String,

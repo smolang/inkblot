@@ -1,6 +1,6 @@
-package net.rec0de.inkblot.codegen
+package org.smolang.inkblot.codegen
 
-import net.rec0de.inkblot.reasoning.VariableProperties
+import org.smolang.inkblot.reasoning.VariableProperties
 import org.apache.jena.query.Query
 import java.io.File
 import java.nio.file.Path
@@ -43,7 +43,11 @@ class SemanticObjectGenerator(
     override fun genBoilerplate() = pkg() + "\n" + imports() + "\n"
 
     override fun genFactory(): String {
-        val validateQueries = ValidatingSparqlGenerator.validatorQueriesFor(stringQuery, synthesizer, variableInfo.values).map {
+        val validateQueries = ValidatingSparqlGenerator.validatorQueriesFor(
+            stringQuery,
+            synthesizer,
+            variableInfo.values
+        ).map {
             escape(prettifySparql(it))
         }.joinToString(",\n") { "\"$it\"" }
         return """
@@ -533,7 +537,7 @@ class SemanticObjectGenerator(
 
     private fun imports(): String {
         val imports = mutableListOf(
-            "net.rec0de.inkblot.runtime.*",
+            "org.smolang.inkblot.runtime.*",
             "org.apache.jena.query.ParameterizedSparqlString",
             "org.apache.jena.query.QuerySolution",
             "org.apache.jena.rdf.model.ResourceFactory",

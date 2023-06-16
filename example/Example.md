@@ -96,3 +96,20 @@ Inkblot.commit()
 ```
 
 To try this for yourself, you can create test data using inkblot by adapting the usage example. Or, for a quick start, import [sampleBikes.ttl](sampleBikes.ttl) into your data store before executing the example. If you'd like to avoid creating a new project and importing the required dependencies, you can also just add your generated sources and the example script into the inkblot source tree.
+
+On first execution, this script should produce the following output when used with the sample dataset:
+
+```
+Loading bike inventory
+http://rec0de.net/ns/bike#bike-5v7m7ti-f27kqvqf: mfg 1989
+-> Number of bells: 0
+-> Warning: Mismatched wheel diameters (12.0 vs 13.0)
+http://rec0de.net/ns/bike#bike-5v7m7ti-hvxtklzj: mfg 2022
+-> Number of bells: 1
+-> Bell colors: froggy green
+http://rec0de.net/ns/bike#bike-5v7m7ti-njlxloa7: mfg 2022
+-> Number of bells: 2
+-> Bell colors: shiny chrome, light-leak orange
+```
+
+On subsequent executions, the additional, newly created bike(s) should be present in the listing as well.

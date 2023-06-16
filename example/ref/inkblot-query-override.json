@@ -1,14 +1,14 @@
 {
     "Bike": {
-        "creation": "INSERT DATA { ?anchor <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://rec0de.net/ns/bike#bike>. ?anchor <http://rec0de.net/ns/bike#hasFrame> _:b8. _:b8 <http://rec0de.net/ns/bike#frontWheel> ?fw. _:b8 <http://rec0de.net/ns/bike#backWheel> ?bw. }",
-        "init-bells": "INSERT { ?inkblt1 <http://rec0de.net/ns/bike#hasBell> ?n. ?anchor <http://rec0de.net/ns/bike#hasFrame> ?inkblt1. } WHERE {  }",
+        "creation": "INSERT DATA { ?anchor <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://rec0de.net/ns/bike#bike>. ?anchor <http://rec0de.net/ns/bike#hasFrame> _:b0. _:b0 <http://rec0de.net/ns/bike#frontWheel> ?fw. _:b0 <http://rec0de.net/ns/bike#backWheel> ?bw. }",
+        "init-bells": "INSERT { _:b3 <http://rec0de.net/ns/bike#hasBell> ?n. ?anchor <http://rec0de.net/ns/bike#hasFrame> _:b3. } WHERE {  }",
         "init-mfg": "INSERT { ?anchor <http://rec0de.net/ns/bike#mfgYear> ?n.  } WHERE {  }",
         "delete": "DELETE WHERE { ?anchor ?b ?c }; DELETE WHERE { ?d ?e ?anchor }",
         "deleteRedirect": "DELETE { ?s ?p ?anchor } INSERT { ?s ?p ?target } WHERE { ?s ?p ?anchor }; DELETE WHERE { ?anchor ?b ?c }",
-        "change-fw": "DELETE { ?inkblt0 <http://rec0de.net/ns/bike#frontWheel> ?o. } INSERT { ?inkblt0 <http://rec0de.net/ns/bike#frontWheel> ?n. } WHERE { ?anchor <http://rec0de.net/ns/bike#hasFrame> ?inkblt0. ?inkblt0 <http://rec0de.net/ns/bike#frontWheel> _:b9. ?inkblt0 <http://rec0de.net/ns/bike#backWheel> _:b10. }",
-        "change-bw": "DELETE { ?inkblt0 <http://rec0de.net/ns/bike#backWheel> ?o. } INSERT { ?inkblt0 <http://rec0de.net/ns/bike#backWheel> ?n. } WHERE { ?anchor <http://rec0de.net/ns/bike#hasFrame> ?inkblt0. ?inkblt0 <http://rec0de.net/ns/bike#frontWheel> _:b11. ?inkblt0 <http://rec0de.net/ns/bike#backWheel> _:b12. }",
-        "add-bells": "INSERT { ?inkblt1 <http://rec0de.net/ns/bike#hasBell> ?n. ?anchor <http://rec0de.net/ns/bike#hasFrame> ?inkblt1. } WHERE {  }",
-        "remove-bells": "DELETE { ?inkblt1 <http://rec0de.net/ns/bike#hasBell> ?o. } WHERE { ?anchor <http://rec0de.net/ns/bike#hasFrame> ?inkblt1. ?inkblt1 <http://rec0de.net/ns/bike#hasBell> _:b13. }"
+        "change-fw": "DELETE { ?inkblt0 <http://rec0de.net/ns/bike#frontWheel> ?o. } INSERT { ?inkblt0 <http://rec0de.net/ns/bike#frontWheel> ?n. } WHERE { ?anchor <http://rec0de.net/ns/bike#hasFrame> ?inkblt0. ?inkblt0 <http://rec0de.net/ns/bike#frontWheel> _:b2. ?inkblt0 <http://rec0de.net/ns/bike#backWheel> _:b1. }",
+        "change-bw": "DELETE { ?inkblt0 <http://rec0de.net/ns/bike#backWheel> ?o. } INSERT { ?inkblt0 <http://rec0de.net/ns/bike#backWheel> ?n. } WHERE { ?anchor <http://rec0de.net/ns/bike#hasFrame> ?inkblt0. ?inkblt0 <http://rec0de.net/ns/bike#frontWheel> _:b2. ?inkblt0 <http://rec0de.net/ns/bike#backWheel> _:b1. }",
+        "add-bells": "INSERT { _:b3 <http://rec0de.net/ns/bike#hasBell> ?n. ?anchor <http://rec0de.net/ns/bike#hasFrame> _:b3. } WHERE {  }",
+        "remove-bells": "DELETE { ?inkblt1 <http://rec0de.net/ns/bike#hasBell> ?o. } WHERE { ?anchor <http://rec0de.net/ns/bike#hasFrame> ?inkblt1. ?inkblt1 <http://rec0de.net/ns/bike#hasBell> _:b4. }"
     },
     "Wheel": {
         "creation": "INSERT DATA { ?anchor <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://rec0de.net/ns/bike#wheel>. ?anchor <http://rec0de.net/ns/bike#diameter> ?dia. }",

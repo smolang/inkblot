@@ -1,0 +1,104 @@
+<http://rec0de.net/ns/bike#bike-5v7m7ti-f27kqvqf>
+        a       <http://rec0de.net/ns/bike#bike> ;
+        <http://rec0de.net/ns/bike#hasFrame>
+                [ <http://rec0de.net/ns/bike#backWheel>
+                          <http://rec0de.net/ns/bike#wheel-5v7m7ti-5rcklmce> ;
+                  <http://rec0de.net/ns/bike#frontWheel>
+                          <http://rec0de.net/ns/bike#wheel-5v7m7ti-rtnykujl>
+                ] ;
+        <http://rec0de.net/ns/bike#mfgYear>
+                "1989"^^<http://www.w3.org/2001/XMLSchema#int> .
+
+<http://rec0de.net/ns/bike#wheel-5v7m7ti-lmii75ie>
+        a       <http://rec0de.net/ns/bike#wheel> ;
+        <http://rec0de.net/ns/bike#diameter>
+                "30.0"^^<http://www.w3.org/2001/XMLSchema#double> ;
+        <http://rec0de.net/ns/bike#mfgName>
+                "BigWheel" .
+
+<http://rec0de.net/ns/bike#wheel-5v7m7ti-7kspr5nv>
+        a       <http://rec0de.net/ns/bike#wheel> ;
+        <http://rec0de.net/ns/bike#diameter>
+                "10.0"^^<http://www.w3.org/2001/XMLSchema#double> ;
+        <http://rec0de.net/ns/bike#mfgDate>
+                "2022"^^<http://www.w3.org/2001/XMLSchema#int> .
+
+<http://rec0de.net/ns/bike#wheel-5v7m7ti-ajadmym3>
+        a       <http://rec0de.net/ns/bike#wheel> ;
+        <http://rec0de.net/ns/bike#diameter>
+                "10.0"^^<http://www.w3.org/2001/XMLSchema#double> ;
+        <http://rec0de.net/ns/bike#mfgDate>
+                "2021"^^<http://www.w3.org/2001/XMLSchema#int> ;
+        <http://rec0de.net/ns/bike#mfgName>
+                "KidWheel" .
+
+<http://rec0de.net/ns/bike#bike-5v7m7ti-hvxtklzj>
+        a       <http://rec0de.net/ns/bike#bike> ;
+        <http://rec0de.net/ns/bike#hasFrame>
+                [ <http://rec0de.net/ns/bike#backWheel>
+                          <http://rec0de.net/ns/bike#wheel-5v7m7ti-7kspr5nv> ;
+                  <http://rec0de.net/ns/bike#frontWheel>
+                          <http://rec0de.net/ns/bike#wheel-5v7m7ti-ajadmym3>
+                ] ;
+        <http://rec0de.net/ns/bike#hasFrame>
+                [ <http://rec0de.net/ns/bike#hasBell>
+                          <http://rec0de.net/ns/bike#bell-5v7m7ti-uf4ic4nl> ] ;
+        <http://rec0de.net/ns/bike#mfgYear>
+                "2022"^^<http://www.w3.org/2001/XMLSchema#int> .
+
+<http://rec0de.net/ns/bike#wheel-5v7m7ti-rtnykujl>
+        a       <http://rec0de.net/ns/bike#wheel> ;
+        <http://rec0de.net/ns/bike#diameter>
+                "12.0"^^<http://www.w3.org/2001/XMLSchema#double> ;
+        <http://rec0de.net/ns/bike#mfgDate>
+                "1975"^^<http://www.w3.org/2001/XMLSchema#int> ;
+        <http://rec0de.net/ns/bike#mfgName>
+                "WonkyWheel" .
+
+<http://rec0de.net/ns/bike#wheel-5v7m7ti-5rcklmce>
+        a       <http://rec0de.net/ns/bike#wheel> ;
+        <http://rec0de.net/ns/bike#diameter>
+                "13.0"^^<http://www.w3.org/2001/XMLSchema#double> ;
+        <http://rec0de.net/ns/bike#mfgDate>
+                "1988"^^<http://www.w3.org/2001/XMLSchema#int> ;
+        <http://rec0de.net/ns/bike#mfgName>
+                "TiredTire" .
+
+<http://rec0de.net/ns/bike#wheel-5v7m7ti-oen7o2ly>
+        a       <http://rec0de.net/ns/bike#wheel> ;
+        <http://rec0de.net/ns/bike#diameter>
+                "30.0"^^<http://www.w3.org/2001/XMLSchema#double> ;
+        <http://rec0de.net/ns/bike#mfgName>
+                "BigWheel" .
+
+<http://rec0de.net/ns/bike#bell-5v7m7ti-hb75o4g7>
+        a       <http://rec0de.net/ns/bike#bell> ;
+        <http://rec0de.net/ns/bike#color>
+                "shiny chrome" .
+
+<http://rec0de.net/ns/bike#bell-5v7m7ti-zhyl7ioj>
+        a       <http://rec0de.net/ns/bike#bell> ;
+        <http://rec0de.net/ns/bike#color>
+                "light-leak orange" .
+
+<http://rec0de.net/ns/bike#bell-5v7m7ti-uf4ic4nl>
+        a       <http://rec0de.net/ns/bike#bell> ;
+        <http://rec0de.net/ns/bike#color>
+                "froggy green" .
+
+<http://rec0de.net/ns/bike#bike-5v7m7ti-njlxloa7>
+        a       <http://rec0de.net/ns/bike#bike> ;
+        <http://rec0de.net/ns/bike#hasFrame>
+                [ <http://rec0de.net/ns/bike#backWheel>
+                          <http://rec0de.net/ns/bike#wheel-5v7m7ti-oen7o2ly> ;
+                  <http://rec0de.net/ns/bike#frontWheel>
+                          <http://rec0de.net/ns/bike#wheel-5v7m7ti-lmii75ie>
+                ] ;
+        <http://rec0de.net/ns/bike#hasFrame>
+                [ <http://rec0de.net/ns/bike#hasBell>
+                          <http://rec0de.net/ns/bike#bell-5v7m7ti-hb75o4g7> ] ;
+        <http://rec0de.net/ns/bike#hasFrame>
+                [ <http://rec0de.net/ns/bike#hasBell>
+                          <http://rec0de.net/ns/bike#bell-5v7m7ti-zhyl7ioj> ] ;
+        <http://rec0de.net/ns/bike#mfgYear>
+                "2022"^^<http://www.w3.org/2001/XMLSchema#int> .

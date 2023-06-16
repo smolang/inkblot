@@ -9,17 +9,17 @@ import org.apache.jena.datatypes.xsd.XSDDatatype
 object BikeFactory : SemanticObjectFactory<Bike>(
     listOf(
         "PREFIX bk: <http://rec0de.net/ns/bike#> SELECT ?bike ?mfg ?fw ?bw ?bells WHERE { ?bike a bk:bike; bk:hasFrame _:b0. _:b0 bk:frontWheel ?fw; bk:backWheel ?bw OPTIONAL { ?bike bk:mfgYear ?mfg } OPTIONAL { ?bike bk:hasFrame _:b1. _:b1 bk:hasBell ?bells } FILTER ((((bound(?fw) && (! (isIRI(?fw) && EXISTS { ?fw a bk:wheel }))) || (bound(?bw) && (! (isIRI(?bw) && EXISTS { ?bw a bk:wheel })))) || (bound(?bells) && (! (isIRI(?bells) && EXISTS { ?bells a bk:bell })))) || (bound(?mfg) && (datatype(?mfg) != <http://www.w3.org/2001/XMLSchema#int>))) }",
-        "SELECT * WHERE { ?anchor a <http://rec0de.net/ns/bike#bike>. _:b0 <http://rec0de.net/ns/bike#frontWheel> ?a. ?anchor <http://rec0de.net/ns/bike#hasFrame> _:b0. _:b0 <http://rec0de.net/ns/bike#backWheel> _:b2. _:b1 <http://rec0de.net/ns/bike#frontWheel> ?b. ?anchor <http://rec0de.net/ns/bike#hasFrame> _:b1. _:b1 <http://rec0de.net/ns/bike#backWheel> _:b3 FILTER (?a != ?b) }",
-        "SELECT * WHERE { ?anchor a <http://rec0de.net/ns/bike#bike>. _:b0 <http://rec0de.net/ns/bike#backWheel> ?a. ?anchor <http://rec0de.net/ns/bike#hasFrame> _:b0. _:b0 <http://rec0de.net/ns/bike#frontWheel> _:b2. _:b1 <http://rec0de.net/ns/bike#backWheel> ?b. ?anchor <http://rec0de.net/ns/bike#hasFrame> _:b1. _:b1 <http://rec0de.net/ns/bike#frontWheel> _:b3 FILTER (?a != ?b) }",
+        "SELECT * WHERE { ?anchor a <http://rec0de.net/ns/bike#bike>. _:b0 <http://rec0de.net/ns/bike#frontWheel> ?a. ?anchor <http://rec0de.net/ns/bike#hasFrame> _:b0. _:b0 <http://rec0de.net/ns/bike#backWheel> _:b1; <http://rec0de.net/ns/bike#frontWheel> ?b. ?anchor <http://rec0de.net/ns/bike#hasFrame> _:b0. _:b0 <http://rec0de.net/ns/bike#backWheel> _:b1 FILTER (?a != ?b) }",
+        "SELECT * WHERE { ?anchor a <http://rec0de.net/ns/bike#bike>. _:b0 <http://rec0de.net/ns/bike#backWheel> ?a. ?anchor <http://rec0de.net/ns/bike#hasFrame> _:b0. _:b0 <http://rec0de.net/ns/bike#frontWheel> _:b1; <http://rec0de.net/ns/bike#backWheel> ?b. ?anchor <http://rec0de.net/ns/bike#hasFrame> _:b0. _:b0 <http://rec0de.net/ns/bike#frontWheel> _:b1 FILTER (?a != ?b) }",
         "SELECT * WHERE { ?anchor a <http://rec0de.net/ns/bike#bike>; <http://rec0de.net/ns/bike#mfgYear> ?a; <http://rec0de.net/ns/bike#mfgYear> ?b FILTER (?a != ?b) }"
     ),
     "Bike"
 ) {
     override val anchor = "bike"
     override val query = ParameterizedSparqlString("PREFIX bk: <http://rec0de.net/ns/bike#> SELECT ?bike ?mfg ?fw ?bw ?bells WHERE { ?bike a bk:bike; bk:hasFrame _:b0. _:b0 bk:frontWheel ?fw; bk:backWheel ?bw OPTIONAL { ?bike bk:mfgYear ?mfg } OPTIONAL { ?bike bk:hasFrame _:b1. _:b1 bk:hasBell ?bells } }")
-    private val initUpdate_bells = ParameterizedSparqlString("INSERT { ?inkblt1 <http://rec0de.net/ns/bike#hasBell> ?n. ?anchor <http://rec0de.net/ns/bike#hasFrame> ?inkblt1. } WHERE {  }")
+    private val initUpdate_bells = ParameterizedSparqlString("INSERT { _:b3 <http://rec0de.net/ns/bike#hasBell> ?n. ?anchor <http://rec0de.net/ns/bike#hasFrame> _:b3. } WHERE {  }")
     private val initUpdate_mfg = ParameterizedSparqlString("INSERT { ?anchor <http://rec0de.net/ns/bike#mfgYear> ?n.  } WHERE {  }")
-    private val baseCreationUpdate = ParameterizedSparqlString("INSERT DATA { ?anchor <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://rec0de.net/ns/bike#bike>. ?anchor <http://rec0de.net/ns/bike#hasFrame> _:b8. _:b8 <http://rec0de.net/ns/bike#frontWheel> ?fw. _:b8 <http://rec0de.net/ns/bike#backWheel> ?bw. }")
+    private val baseCreationUpdate = ParameterizedSparqlString("INSERT DATA { ?anchor <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://rec0de.net/ns/bike#bike>. ?anchor <http://rec0de.net/ns/bike#hasFrame> _:b0. _:b0 <http://rec0de.net/ns/bike#frontWheel> ?fw. _:b0 <http://rec0de.net/ns/bike#backWheel> ?bw. }")
     
     fun create(frontWheel: Wheel, backWheel: Wheel, bells: List<Bell>, mfgYear: Int?): Bike {
         val uri = "http://rec0de.net/ns/bike#bike" + Inkblot.freshSuffixFor("bike")
@@ -89,7 +89,7 @@ class Bike internal constructor(uri: String, frontWheel: String, backWheel: Stri
         if(deleted)
             throw Exception("Trying to set property 'frontWheel' on deleted object <$uri>")
     
-        val template = ParameterizedSparqlString("DELETE { ?inkblt0 <http://rec0de.net/ns/bike#frontWheel> ?o. } INSERT { ?inkblt0 <http://rec0de.net/ns/bike#frontWheel> ?n. } WHERE { ?anchor <http://rec0de.net/ns/bike#hasFrame> ?inkblt0. ?inkblt0 <http://rec0de.net/ns/bike#frontWheel> _:b9. ?inkblt0 <http://rec0de.net/ns/bike#backWheel> _:b10. }")
+        val template = ParameterizedSparqlString("DELETE { ?inkblt0 <http://rec0de.net/ns/bike#frontWheel> ?o. } INSERT { ?inkblt0 <http://rec0de.net/ns/bike#frontWheel> ?n. } WHERE { ?anchor <http://rec0de.net/ns/bike#hasFrame> ?inkblt0. ?inkblt0 <http://rec0de.net/ns/bike#frontWheel> _:b2. ?inkblt0 <http://rec0de.net/ns/bike#backWheel> _:b1. }")
         template.setIri("anchor", uri)
         template.setParam("o", ResourceFactory.createResource(_inkbltRef_frontWheel).asNode())
         template.setParam("n", ResourceFactory.createResource(value.uri).asNode())
@@ -107,7 +107,7 @@ class Bike internal constructor(uri: String, frontWheel: String, backWheel: Stri
         if(deleted)
             throw Exception("Trying to set property 'backWheel' on deleted object <$uri>")
     
-        val template = ParameterizedSparqlString("DELETE { ?inkblt0 <http://rec0de.net/ns/bike#backWheel> ?o. } INSERT { ?inkblt0 <http://rec0de.net/ns/bike#backWheel> ?n. } WHERE { ?anchor <http://rec0de.net/ns/bike#hasFrame> ?inkblt0. ?inkblt0 <http://rec0de.net/ns/bike#frontWheel> _:b11. ?inkblt0 <http://rec0de.net/ns/bike#backWheel> _:b12. }")
+        val template = ParameterizedSparqlString("DELETE { ?inkblt0 <http://rec0de.net/ns/bike#backWheel> ?o. } INSERT { ?inkblt0 <http://rec0de.net/ns/bike#backWheel> ?n. } WHERE { ?anchor <http://rec0de.net/ns/bike#hasFrame> ?inkblt0. ?inkblt0 <http://rec0de.net/ns/bike#frontWheel> _:b2. ?inkblt0 <http://rec0de.net/ns/bike#backWheel> _:b1. }")
         template.setIri("anchor", uri)
         template.setParam("o", ResourceFactory.createResource(_inkbltRef_backWheel).asNode())
         template.setParam("n", ResourceFactory.createResource(value.uri).asNode())
@@ -127,7 +127,7 @@ class Bike internal constructor(uri: String, frontWheel: String, backWheel: Stri
             throw Exception("Trying to set property 'bells' on deleted object <$uri>")
         _inkbltRef_bells.add(obj.uri)
     
-        val template = ParameterizedSparqlString("INSERT { ?inkblt1 <http://rec0de.net/ns/bike#hasBell> ?n. ?anchor <http://rec0de.net/ns/bike#hasFrame> ?inkblt1. } WHERE {  }")
+        val template = ParameterizedSparqlString("INSERT { _:b3 <http://rec0de.net/ns/bike#hasBell> ?n. ?anchor <http://rec0de.net/ns/bike#hasFrame> _:b3. } WHERE {  }")
         template.setIri("anchor", uri)
         template.setParam("n", ResourceFactory.createResource(obj.uri).asNode())
         val cn = ComplexPropertyAdd(template.asUpdate())
@@ -140,7 +140,7 @@ class Bike internal constructor(uri: String, frontWheel: String, backWheel: Stri
             throw Exception("Trying to set property 'bells' on deleted object <$uri>")
         _inkbltRef_bells.remove(obj.uri)
     
-        val template = ParameterizedSparqlString("DELETE { ?inkblt1 <http://rec0de.net/ns/bike#hasBell> ?o. } WHERE { ?anchor <http://rec0de.net/ns/bike#hasFrame> ?inkblt1. ?inkblt1 <http://rec0de.net/ns/bike#hasBell> _:b13. }")
+        val template = ParameterizedSparqlString("DELETE { ?inkblt1 <http://rec0de.net/ns/bike#hasBell> ?o. } WHERE { ?anchor <http://rec0de.net/ns/bike#hasFrame> ?inkblt1. ?inkblt1 <http://rec0de.net/ns/bike#hasBell> _:b4. }")
         template.setIri("anchor", uri)
         template.setParam("o", ResourceFactory.createResource(obj.uri).asNode())
         val cn = ComplexPropertyRemove(template.asUpdate())

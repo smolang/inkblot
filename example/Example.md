@@ -69,3 +69,30 @@ Inkblot.endpoint = "http://example.com/your/sparql/endpoint"
 ...
 Inkblot.commit()
 ```
+
+You can find a full usage example in [apiUsage.kt](apiUsage.kt). The example retrieves all bike instances from the data store and prints some information about them. It then creates a new bike from a mix of old and new components and finally commits the changes to the data store. The relevant parts of the code are shown below:
+
+```kotlin
+Inkblot.endpoint = "http://localhost:3030/inkblot" // your SPARQL endpoint here
+
+println("Loading bike inventory")
+val bikes = BikeFactory.commitAndLoadAll()
+bikes.forEach { bk ->
+    println("${bk.uri}: mfg ${bk.mfgYear}")
+    println("-> Number of bells: ${bk.bells.size}")
+    if(bk.bells.isNotEmpty())
+        println("-> Bell colors: ${bk.bells.joinToString(", ") { bell -> bell.color }}")
+    if(bk.frontWheel.diameter != bk.backWheel.diameter)
+        println("-> Warning: Mismatched wheel diameters (${bk.frontWheel.diameter} vs ${bk.backWheel.diameter})")
+}
+
+println("Creating a bike")
+val newFrontWheel = WheelFactory.create(20.0, 2023, listOf("AluWheel"))
+val newBackWheel = WheelFactory.create(22.0, 2021, emptyList())
+val newBell = BellFactory.create("blood red")
+BikeFactory.create(newFrontWheel, newBackWheel, listOf(newBell), 2023)
+
+Inkblot.commit()
+```
+
+To try this for yourself, you can create test data using inkblot by adapting the usage example. Or, for a quick start, import [sampleBikes.ttl](sampleBikes.ttl) into your data store before executing the example. If you'd like to avoid creating a new project and importing the required dependencies, you can also just add your generated sources and the example script into the inkblot source tree.

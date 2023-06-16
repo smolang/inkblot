@@ -8,6 +8,8 @@ class QuerySynthesizer(anchor: String, classTypeUri: String, vars: Map<String, V
 
     // persist blank node counter across calls to make property functionality checks easier
     private var blankNodeCounter = 0
+    // variable to blank node mapping
+    private val blankNodeMap = mutableMapOf<String, String>()
 
     override fun synthBaseCreationUpdate(): String {
         // check that we have constructor values for all requires sparql variables
@@ -78,12 +80,10 @@ class QuerySynthesizer(anchor: String, classTypeUri: String, vars: Map<String, V
 
         val ctx = paths.definingContextForVariable(v)
 
+        val pureInsertRequired = bindingsFor(requiredVarBindings, ctx).minus(insertedEdges).filter{ it.optional }
         // in the pure insertion case we have to assume that optional edges have not been created yet, so we'll include them in the insert set
         if(insert && !delete) {
-            val pureInsertRequired = bindingsFor(requiredVarBindings, ctx).minus(insertedEdges).filter{ it.optional }
             insertedEdges.addAll(pureInsertRequired)
-            val rendered = renderEdgeSet(pureInsertRequired.toSet(), requiredVarBindings.associateWith { it })
-            insertSentences.add(rendered)
         }
 
         // in the pure insertion case we cannot include full bindings in the where clause because those structures might not be there yet
@@ -91,6 +91,26 @@ class QuerySynthesizer(anchor: String, classTypeUri: String, vars: Map<String, V
             bindingsFor(requiredVarBindings, ctx).minus(insertedEdges)
         else
             bindingsFor(requiredVarBindings, ctx)
+
+        if(insert && !delete) {
+            // variables that do not occur in the bindings after removal of already inserted edges should be rendered as blank nodes
+            val unboundVariables = requiredVarBindings.filter { variable -> bindings.none { it.o == variable || it.s == variable  } }
+            requiredVarBindings.removeAll(unboundVariables.toSet())
+
+            val rendered = renderEdgeSet(pureInsertRequired.toSet(), requiredVarBindings.associateWith { it })
+
+            // if any variables are no longer bound, we'll have to replace references to them with the appropriate blank node
+            unboundVariables.forEach { v ->
+                insertSentences.replaceAll { insertSentence ->
+                    // this is a bit ugly, but we know that the variables in the insert statements are always followed by either a space or a period
+                    // which are both considered word boundaries, so the string replace is safe and we do not have to worry about prefixes
+                    insertSentence.replace(Regex("\\?${rewriteAnonymousVariableNames(v).removePrefix("?")}\\b"), blankNodeMap[v]!!)
+                }
+            }
+
+            insertSentences.add(rendered)
+        }
+
         val whereSentences = renderEdgeSet(bindings, requiredVarBindings.associateWith { it })
 
         if(!delete && !insert)
@@ -150,9 +170,6 @@ class QuerySynthesizer(anchor: String, classTypeUri: String, vars: Map<String, V
     }
 
     private fun renderEdgeSet(edgeSet: Set<VarDependency>, assignableVars: Map<String,String>): String {
-        // variable to blank node mapping
-        val blankNodeMap = mutableMapOf<String, String>()
-
         // collect by graph name and render into one block of triples per graph
         val byGraph = edgeSet.groupBy { it.inGraph ?: "inkblot:default" }.mapValues { (_, edges) ->
             edges.joinToString(" ") {
